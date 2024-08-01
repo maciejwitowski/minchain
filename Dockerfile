@@ -10,6 +10,8 @@ COPY go.mod ./
 # Download the dependencies
 RUN go mod download
 
+EXPOSE 9555
+
 # Copy the source from the current directory to the Working Directory inside the container
 COPY *.go ./
 

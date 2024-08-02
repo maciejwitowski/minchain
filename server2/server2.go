@@ -2,46 +2,60 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
+	logg "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/multiformats/go-multiaddr"
 	"log"
 	"os"
-	"os/signal"
-	"syscall"
 )
 
 func main() {
-	node, err := libp2p.New(
-		libp2p.ListenAddrStrings("/ip4/127.0.0.1/tcp/0"),
-	)
+	logg.SetAllLoggers(logg.LevelDebug)
+	// Create a new libp2p host
+	h, err := libp2p.New()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
+	}
+	defer h.Close()
+
+	// Parse the multiaddr of the first server
+	s1 := "/ip4/127.0.0.1/tcp/58510/p2p/12D3KooWDmEA4MP4ZENNG561pYCeh7Lky7GFJefmtfTgWoBEdj1n" //os.Args[1]
+	fmt.Println("S1: ", s1)
+	maddr, err := multiaddr.NewMultiaddr(s1)
+
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	node.SetStreamHandler("/chat/1.0.0", handleStream)
-
-	// Print the host's addresses
-	for _, addr := range node.Addrs() {
-		fmt.Printf("Listening on %s/p2p/%s\n", addr, node.ID())
+	// Extract the peer ID from the multiaddr
+	info, err := peer.AddrInfoFromP2pAddr(maddr)
+	if err != nil {
+		log.Fatal(err)
 	}
-	// wait for a SIGINT or SIGTERM signal
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
-	<-ch
-	fmt.Println("Received signal, shutting down...")
 
-	if err := node.Close(); err != nil {
-		panic(err)
+	// Connect to the first server
+	err = h.Connect(context.Background(), *info)
+	if err != nil {
+		log.Fatal(err)
 	}
-}
 
-func handleStream(s network.Stream) {
-	log.Println("Got a new stream!")
+	// Open a stream to the first server
+	s, err := h.NewStream(context.Background(), info.ID, "/chat/1.0.0")
+	if err != nil {
+		log.Fatal(err)
+	}
 
+	// Create a buffer stream for non-blocking read and write
 	rw := bufio.NewReadWriter(bufio.NewReader(s), bufio.NewWriter(s))
+
 	go readData(rw)
 	go writeData(rw)
+
+	// Wait forever
+	select {}
 }
 
 func readData(rw *bufio.ReadWriter) {

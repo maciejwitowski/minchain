@@ -17,8 +17,4 @@ func InitConfig() Config {
 		PubSubTopic:   *topic,
 		ListeningPort: *port,
 	}
-	//return Config{
-	//	ListeningPort: 8000,
-	//	PubSubTopic: "private-group",
-	//}
 }

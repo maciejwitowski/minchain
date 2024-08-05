@@ -37,14 +37,14 @@ func main() {
 }
 
 func onSubscribed(ctx context.Context, node *p2p.Node, sub *pubsub.Subscription) {
-	go handleMessages(ctx, sub)
+	go readMessages(ctx, sub)
 	if node.Topic != nil {
 		go func() {
-			NewReaderPublisher(node.Topic).Start(ctx)
+			NewPublisher(node.Topic).StartPublishing(ctx)
 		}()
 	}
 }
-func handleMessages(ctx context.Context, sub *pubsub.Subscription) {
+func readMessages(ctx context.Context, sub *pubsub.Subscription) {
 	for {
 		msg, err := sub.Next(ctx)
 		if err != nil {
@@ -60,14 +60,14 @@ type ReaderPublisher struct {
 	topic  *pubsub.Topic
 }
 
-func NewReaderPublisher(topic *pubsub.Topic) *ReaderPublisher {
+func NewPublisher(topic *pubsub.Topic) *ReaderPublisher {
 	return &ReaderPublisher{
 		reader: bufio.NewReader(os.Stdin),
 		topic:  topic,
 	}
 }
 
-func (rp *ReaderPublisher) Start(ctx context.Context) {
+func (rp *ReaderPublisher) StartPublishing(ctx context.Context) {
 	for {
 		fmt.Print("> ")
 		message, err := rp.reader.ReadString('\n')

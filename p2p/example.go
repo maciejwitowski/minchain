@@ -1,4 +1,4 @@
-package main
+package p2p
 
 import (
 	"bufio"
@@ -21,7 +21,7 @@ func main() {
 
 	node.SetStreamHandler("/chat/1.0.0", handleStream)
 
-	// Print the host's addresses
+	// Print the p2pHost's addresses
 	for _, addr := range node.Addrs() {
 		fmt.Printf("Listening on %s/p2p/%s\n", addr, node.ID())
 	}

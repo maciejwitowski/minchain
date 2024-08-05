@@ -104,3 +104,7 @@ func (n *Node) Subscribe(ctx context.Context, topic string) (<-chan *pubsub.Subs
 
 	return subChan, errChan
 }
+
+func (n *Node) Hostname() string {
+	return n.p2pHost.ID().String()
+}

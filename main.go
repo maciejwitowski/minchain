@@ -42,12 +42,16 @@ func main() {
 		fmt.Println("Subscription timed out")
 	}
 
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(1 * time.Second)
+	var previousMpoolSize = 0
 	go func() {
 		for {
 			select {
 			case <-ticker.C:
-				mpool.DumpTx()
+				if mpool.Size() != previousMpoolSize {
+					mpool.DumpTx()
+					previousMpoolSize = mpool.Size()
+				}
 			}
 		}
 	}()

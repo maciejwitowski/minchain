@@ -29,6 +29,15 @@ func (m *Mempool) HandleTransaction(tx Tx) {
 }
 
 func IsValid(tx Tx) bool {
+	if len(strings.TrimSpace(tx.Data)) == 0 {
+		return false
+	}
+
+	if len(tx.Signature) != 65 {
+		fmt.Println("Invalid signature length")
+		return false
+	}
+
 	digest := crypto.Keccak256([]byte(tx.Data))
 	publicKey, err := crypto.Ecrecover(digest, tx.Signature)
 	if err != nil {
@@ -36,11 +45,13 @@ func IsValid(tx Tx) bool {
 		return false
 	}
 
-	if !crypto.VerifySignature(publicKey, digest, tx.Signature) {
+	// VerifySignature expects 64-bytes long sig, without the last recovery ID byte
+	sig := tx.Signature[:64]
+	if !crypto.VerifySignature(publicKey, digest, sig) {
 		return false
 	}
 
-	return len(strings.TrimSpace(tx.Data)) > 0
+	return true
 }
 
 func (m *Mempool) DumpTx() {
@@ -54,4 +65,8 @@ func (m *Mempool) DumpTx() {
 	if len(m.mpool) > 0 {
 		fmt.Println("--------")
 	}
+}
+
+func (m *Mempool) Size() int {
+	return len(m.mpool)
 }

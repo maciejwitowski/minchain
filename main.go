@@ -56,10 +56,10 @@ func onSubscribed(ctx context.Context, node *p2p.Node, sub *pubsub.Subscription,
 	messageProcessor := make(chan chain.Tx, 1)
 	go consumeFromMpool(ctx, sub, messageProcessor)
 	go processMessages(ctx, messageProcessor, mpool)
-	if node.Topic != nil {
+	if node.MpoolTopic != nil {
 		messages := make(chan string)
 		go readUserInput(messages)
-		go publishToMpool(ctx, node.Topic, wallet, messages)
+		go publishToMpool(ctx, node.MpoolTopic, wallet, messages)
 	}
 }
 

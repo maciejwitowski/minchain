@@ -17,8 +17,8 @@ var addressTemplate = "/ip4/0.0.0.0/tcp/%d"
 const DiscoveryServiceTag = "p2p-service"
 
 type Node struct {
-	Topic   *pubsub.Topic
-	p2pHost host.Host
+	MpoolTopic *pubsub.Topic
+	p2pHost    host.Host
 }
 
 func InitNode(ctx context.Context, config *lib.Config) (*Node, error) {
@@ -93,7 +93,7 @@ func (n *Node) Subscribe(ctx context.Context, topic string) (<-chan *pubsub.Subs
 			return
 		}
 
-		n.Topic = joinedTopic
+		n.MpoolTopic = joinedTopic
 
 		select {
 		case subChan <- subscription:

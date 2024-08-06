@@ -58,7 +58,7 @@ func onSubscribed(ctx context.Context, node *p2p.Node, sub *pubsub.Subscription,
 	go processMessages(ctx, messageProcessor, mpool)
 	if node.Topic != nil {
 		go func() {
-			NewPublisher(node.Topic, node.Hostname()).StartPublishing(ctx, wallet)
+			NewPublisher(node.Topic).StartPublishing(ctx, wallet)
 		}()
 	}
 }
@@ -93,16 +93,14 @@ func readMessages(ctx context.Context, sub *pubsub.Subscription, messageProcesso
 }
 
 type ReaderPublisher struct {
-	reader   *bufio.Reader
-	topic    *pubsub.Topic
-	hostname string
+	reader *bufio.Reader
+	topic  *pubsub.Topic
 }
 
-func NewPublisher(topic *pubsub.Topic, hostname string) *ReaderPublisher {
+func NewPublisher(topic *pubsub.Topic) *ReaderPublisher {
 	return &ReaderPublisher{
-		reader:   bufio.NewReader(os.Stdin),
-		topic:    topic,
-		hostname: hostname,
+		reader: bufio.NewReader(os.Stdin),
+		topic:  topic,
 	}
 }
 

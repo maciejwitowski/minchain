@@ -8,7 +8,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
-	"minchain/common"
+	"minchain/lib"
 	"strings"
 )
 
@@ -21,7 +21,7 @@ type Node struct {
 	p2pHost host.Host
 }
 
-func InitNode(ctx context.Context, config *common.Config) (*Node, error) {
+func InitNode(ctx context.Context, config *lib.Config) (*Node, error) {
 	options := libp2p.ListenAddrStrings(fmt.Sprintf(addressTemplate, config.ListeningPort))
 	p2pHost, err := libp2p.New(options)
 	if err != nil {

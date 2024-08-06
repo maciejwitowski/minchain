@@ -7,14 +7,16 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"log"
 	"minchain/chain"
-	"minchain/common"
+	"minchain/lib"
 	"minchain/p2p"
 	"os"
 	"time"
 )
 
 func main() {
-	config, err := common.InitConfig()
+	//logging.SetAllLoggers(logging.LevelDebug)
+
+	config, err := lib.InitConfig()
 	if err != nil {
 		log.Fatal("Init config error:", err)
 	}

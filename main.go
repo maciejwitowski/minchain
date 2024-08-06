@@ -35,16 +35,27 @@ func main() {
 
 	fmt.Println(node.String())
 
-	subChan, errChan := node.Subscribe(ctx, config.PubSubTopic)
+	subChan, errChan := node.SubscribeToTransactions(ctx)
 	var sub *pubsub.Subscription
 	select {
 	case sub = <-subChan:
-		fmt.Println("Subscribed.")
-		onSubscribed(ctx, node, sub, mpool, wallet)
+		fmt.Println("Subscribed to transactions.")
+		onSubscribedToTransactions(ctx, node, sub, mpool, wallet)
 	case err := <-errChan:
-		fmt.Println("Subscription error:", err)
+		fmt.Println("Transactions subscription error:", err)
 	case <-ctx.Done():
-		fmt.Println("Subscription timed out")
+		fmt.Println("Transactions subscription timed out")
+	}
+
+	subChan, errChan = node.SubscribeToBlocks(ctx)
+	select {
+	case sub = <-subChan:
+		fmt.Println("Subscribed to blocks.")
+		onSubscribedToBlocks(ctx, node, sub, mpool, wallet)
+	case err := <-errChan:
+		fmt.Println("Block subscription error:", err)
+	case <-ctx.Done():
+		fmt.Println("Block subscription timed out")
 	}
 
 	go lib.Monitor(ctx, mpool, 1*time.Second)
@@ -58,15 +69,21 @@ func main() {
 }
 
 // Extract to separate service
-func onSubscribed(ctx context.Context, node *p2p.Node, sub *pubsub.Subscription, mpool *chain.Mempool, wallet *chain.Wallet) {
+func onSubscribedToTransactions(ctx context.Context, node *p2p.Node, sub *pubsub.Subscription, mpool *chain.Mempool, wallet *chain.Wallet) {
 	messageProcessor := make(chan chain.Tx, 1)
-	go consumeFromMpool(ctx, sub, messageProcessor)
+	go consumeTransactionsFromMempool(ctx, sub, messageProcessor)
 	go processMessages(ctx, messageProcessor, mpool)
 	if node.MpoolTopic != nil {
 		messages := make(chan string)
 		go readUserInput(messages)
 		go publishToMpool(ctx, node.MpoolTopic, wallet, messages)
 	}
+}
+
+func onSubscribedToBlocks(ctx context.Context, node *p2p.Node, sub *pubsub.Subscription, mpool *chain.Mempool, wallet *chain.Wallet) {
+	blocksProcessor := make(chan chain.Block, 1)
+	go consumeBlocksFromMempool(ctx, sub, blocksProcessor)
+	go processBlocks(ctx, blocksProcessor, mpool)
 }
 
 func readUserInput(messages chan<- string) {
@@ -95,7 +112,7 @@ func processMessages(ctx context.Context, processor chan chain.Tx, mpool *chain.
 	}
 }
 
-func consumeFromMpool(ctx context.Context, sub *pubsub.Subscription, messageProcessor chan<- chain.Tx) {
+func consumeTransactionsFromMempool(ctx context.Context, sub *pubsub.Subscription, messageProcessor chan<- chain.Tx) {
 	for {
 		msg, err := sub.Next(ctx)
 		if err != nil {
@@ -108,6 +125,35 @@ func consumeFromMpool(ctx context.Context, sub *pubsub.Subscription, messageProc
 			return
 		}
 		messageProcessor <- *txJson
+	}
+}
+
+func consumeBlocksFromMempool(ctx context.Context, sub *pubsub.Subscription, blocksProcessor chan chain.Block) {
+	for {
+		msg, err := sub.Next(ctx)
+		if err != nil {
+			fmt.Println("Subscription error:", err)
+			return
+		}
+		blkJson, err := chain.BlockFromJson(msg.Data)
+		if err != nil {
+			fmt.Println("Error deserializing block:", err)
+			return
+		}
+		blocksProcessor <- *blkJson
+	}
+}
+
+func processBlocks(ctx context.Context, processor chan chain.Block, mpool *chain.Mempool) {
+	for {
+		select {
+		case blk := <-processor:
+			// Add Tx to mpool
+			log.Println("received block: ", blk.PrettyPrint())
+		case <-ctx.Done():
+			fmt.Println("processBlocks cancelled")
+			return
+		}
 	}
 }
 

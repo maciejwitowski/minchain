@@ -13,6 +13,8 @@ import (
 )
 
 var addressTemplate = "/ip4/0.0.0.0/tcp/%d"
+var transactionsTopic = "transactions"
+var blocksTopic = "blocks"
 
 const DiscoveryServiceTag = "p2p-service"
 
@@ -63,7 +65,15 @@ func (n *Node) String() string {
 	return sb.String()
 }
 
-func (n *Node) Subscribe(ctx context.Context, topic string) (<-chan *pubsub.Subscription, <-chan error) {
+func (n *Node) SubscribeToTransactions(ctx context.Context) (<-chan *pubsub.Subscription, <-chan error) {
+	return n.subscribe(ctx, transactionsTopic)
+}
+
+func (n *Node) SubscribeToBlocks(ctx context.Context) (<-chan *pubsub.Subscription, <-chan error) {
+	return n.subscribe(ctx, blocksTopic)
+}
+
+func (n *Node) subscribe(ctx context.Context, topic string) (<-chan *pubsub.Subscription, <-chan error) {
 	fmt.Println("Subscribing...")
 	subChan := make(chan *pubsub.Subscription, 1)
 	errChan := make(chan error, 1)

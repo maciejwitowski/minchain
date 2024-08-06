@@ -16,6 +16,15 @@ type BlockHeader struct {
 	TransactionHash common.Hash `json:"transactionHash"`
 }
 
+func BlockFromJson(data []byte) (*Block, error) {
+	var blk Block
+	err := json.Unmarshal(data, &blk)
+	if err != nil {
+		return nil, err
+	}
+	return &blk, nil
+}
+
 func (blk *Block) PrettyPrint() string {
 	jsonData, err := json.MarshalIndent(blk, "", "  ")
 	if err != nil {

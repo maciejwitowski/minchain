@@ -19,11 +19,8 @@ var blocksTopic = "blocks"
 const DiscoveryServiceTag = "p2p-service"
 
 type Node struct {
-	TxTopic *pubsub.Topic
-	//transactionsSubscription *pubsub.Topic
-
-	blocksTopic *pubsub.Topic
-	//blocksSubscription *pubsub.Topic
+	TxTopic     *pubsub.Topic
+	BlocksTopic *pubsub.Topic
 
 	p2pHost   host.Host
 	gossipSub *pubsub.PubSub
@@ -80,58 +77,36 @@ func (n *Node) String() string {
 }
 
 func (n *Node) SubscribeToTransactions() (*pubsub.Subscription, error) {
-	joinedTopic, err := n.gossipSub.Join(transactionsTopic)
+	subscription, topic, err := n.subscribeToTopic(transactionsTopic)
 	if err != nil {
 		return nil, err
 	}
-
-	n.TxTopic = joinedTopic
-
-	subscription, err := joinedTopic.Subscribe()
-	if err != nil {
-		return nil, err
-	}
-
+	n.TxTopic = topic
 	return subscription, nil
 }
 
-//func (n *Node) SubscribeToBlocks(ctx context.Context) (<-chan *pubsub.Subscription, <-chan error) {
-//	return n.subscribe(ctx, blocksTopic)
-//}
+func (n *Node) SubscribeToBlocks() (*pubsub.Subscription, error) {
+	subscription, topic, err := n.subscribeToTopic(blocksTopic)
+	if err != nil {
+		return nil, err
+	}
+	n.BlocksTopic = topic
+	return subscription, nil
+}
 
-//func (n *Node) subscribe(ctx context.Context, topic string) (*pubsub.Subscription, <-chan error) {
-//	fmt.Println("Subscribing...")
-//	subChan := make(chan *pubsub.Subscription, 1)
-//	errChan := make(chan error, 1)
-//
-//	go func() {
-//		defer close(subChan)
-//		defer close(errChan)
-//
-//		joinedTopic, err := n.gossipSub.Join(topic)
-//		if err != nil {
-//			errChan <- err
-//			return
-//		}
-//		fmt.Println("Joined topic ", topic)
-//
-//		subscription, err := joinedTopic.Subscribe()
-//		if err != nil {
-//			errChan <- err
-//			return
-//		}
-//
-//		n.MpoolTopic = joinedTopic
-//
-//		select {
-//		case subChan <- subscription:
-//		case <-ctx.Done():
-//			errChan <- ctx.Err()
-//		}
-//	}()
-//
-//	return subChan, errChan
-//}
+func (n *Node) subscribeToTopic(topic string) (*pubsub.Subscription, *pubsub.Topic, error) {
+	joinedTopic, err := n.gossipSub.Join(topic)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	subscription, err := joinedTopic.Subscribe()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return subscription, joinedTopic, nil
+}
 
 func (n *Node) Hostname() string {
 	return n.p2pHost.ID().String()

@@ -16,6 +16,10 @@ type BlockHeader struct {
 	TransactionHash common.Hash `json:"transactionHash"`
 }
 
+func (blk *Block) ToJson() ([]byte, error) {
+	return json.Marshal(blk)
+}
+
 func BlockFromJson(data []byte) (*Block, error) {
 	var blk Block
 	err := json.Unmarshal(data, &blk)

@@ -42,11 +42,18 @@ func main() {
 	}
 	onSubscribedToTransactions(ctx, node, txSubscription, mpool, wallet)
 
+	blkSubscription, err := node.SubscribeToBlocks()
+	if err != nil {
+		fmt.Println("Error subscribing to blocks:", err)
+		return
+	}
+	onSubscribedToBlocks(ctx, blkSubscription, mpool, wallet)
+
 	go lib.Monitor(ctx, mpool, 1*time.Second)
 
 	log.Println("IsBlockProducer=", config.IsBlockProducer)
 	if config.IsBlockProducer {
-		go chain.BlockProducer(mpool)
+		go chain.BlockProducer(ctx, mpool, node.BlocksTopic)
 	}
 
 	select {}
@@ -62,7 +69,7 @@ func onSubscribedToTransactions(ctx context.Context, node *p2p.Node, sub *pubsub
 	go publishToMpool(ctx, node.TxTopic, wallet, messages)
 }
 
-func onSubscribedToBlocks(ctx context.Context, node *p2p.Node, sub *pubsub.Subscription, mpool *chain.Mempool, wallet *chain.Wallet) {
+func onSubscribedToBlocks(ctx context.Context, sub *pubsub.Subscription, mpool *chain.Mempool, wallet *chain.Wallet) {
 	blocksProcessor := make(chan chain.Block, 1)
 	go consumeBlocksFromMempool(ctx, sub, blocksProcessor)
 	go processBlocks(ctx, blocksProcessor, mpool)

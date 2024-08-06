@@ -14,11 +14,16 @@ import (
 )
 
 func main() {
-	config := common.InitConfig()
+	config, err := common.InitConfig()
+	if err != nil {
+		log.Fatal("Init config error:", err)
+	}
+
 	ctx := context.Background()
 	mpool := chain.InitMempool()
 
 	node, err := p2p.InitNode(ctx, config)
+	wallet := chain.NewWallet(config.PrivateKey)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -30,7 +35,7 @@ func main() {
 	select {
 	case sub = <-subChan:
 		fmt.Println("Subscribed.")
-		onSubscribed(ctx, node, sub, mpool)
+		onSubscribed(ctx, node, sub, mpool, wallet)
 	case err := <-errChan:
 		fmt.Println("Subscription error:", err)
 	case <-ctx.Done():
@@ -50,13 +55,14 @@ func main() {
 	select {}
 }
 
-func onSubscribed(ctx context.Context, node *p2p.Node, sub *pubsub.Subscription, mpool *chain.Mempool) {
+// Extract to separate service
+func onSubscribed(ctx context.Context, node *p2p.Node, sub *pubsub.Subscription, mpool *chain.Mempool, wallet *chain.Wallet) {
 	messageProcessor := make(chan chain.Tx, 1)
 	go readMessages(ctx, sub, messageProcessor)
 	go processMessages(ctx, messageProcessor, mpool)
 	if node.Topic != nil {
 		go func() {
-			NewPublisher(node.Topic, node.Hostname()).StartPublishing(ctx, mpool)
+			NewPublisher(node.Topic, node.Hostname()).StartPublishing(ctx, wallet)
 		}()
 	}
 }
@@ -104,17 +110,19 @@ func NewPublisher(topic *pubsub.Topic, hostname string) *ReaderPublisher {
 	}
 }
 
-func (rp *ReaderPublisher) StartPublishing(ctx context.Context, mpool *chain.Mempool) {
+func (rp *ReaderPublisher) StartPublishing(ctx context.Context, wallet *chain.Wallet) {
 	for {
 		fmt.Print("> ")
 		message, err := rp.reader.ReadString('\n')
 		if err != nil {
+			fmt.Println("Error reading the message:", err)
 			return
 		}
 
-		tx := chain.Tx{
-			From: rp.hostname,
-			Data: message,
+		tx, err := wallet.SignedTransaction(message)
+		if err != nil {
+			fmt.Println("Error building transaction:", err)
+			return
 		}
 
 		txJson, err := tx.ToJSON()

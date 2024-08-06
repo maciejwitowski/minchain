@@ -6,8 +6,9 @@ import (
 )
 
 type Tx struct {
-	From string `json:"from"`
-	Data string `json:"data"`
+	From      string `json:"from"`
+	Data      string `json:"data"`
+	Signature []byte `json:"sig"`
 }
 
 // ToJSON serializes the Transaction to JSON

@@ -37,7 +37,7 @@ func main() {
 		fmt.Println("Subscription timed out")
 	}
 
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(10 * time.Second)
 	go func() {
 		for {
 			select {
@@ -65,8 +65,7 @@ func processMessages(ctx context.Context, processor chan chain.Tx, mpool *chain.
 	for {
 		select {
 		case tx := <-processor:
-			fmt.Println("received ", tx)
-			// Adding inbound tx to mpool
+			// Add Tx to mpool
 			mpool.HandleTransaction(tx)
 		case <-ctx.Done():
 			fmt.Println("processMessages cancelled")
@@ -88,7 +87,6 @@ func readMessages(ctx context.Context, sub *pubsub.Subscription, messageProcesso
 			return
 		}
 		messageProcessor <- *txJson
-		fmt.Printf("%s: %s", msg.ReceivedFrom.ShortString(), string(msg.Data))
 	}
 }
 

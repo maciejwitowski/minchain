@@ -39,5 +39,7 @@ func (m *Mempool) DumpTx() {
 	for _, tx := range m.mpool {
 		fmt.Println(tx.PrettyPrint())
 	}
-	fmt.Println("--------")
+	if len(m.mpool) > 0 {
+		fmt.Println("--------")
+	}
 }

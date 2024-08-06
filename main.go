@@ -22,6 +22,9 @@ func main() {
 	}
 
 	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	mpool := chain.InitMempool()
 
 	node, err := p2p.InitNode(ctx, config)
@@ -44,20 +47,7 @@ func main() {
 		fmt.Println("Subscription timed out")
 	}
 
-	ticker := time.NewTicker(1 * time.Second)
-	var previousMpoolSize = 0
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				if mpool.Size() != previousMpoolSize {
-					mpool.DumpTx()
-					previousMpoolSize = mpool.Size()
-				}
-			}
-		}
-	}()
-
+	go lib.Monitor(ctx, mpool, 1*time.Second)
 	select {}
 }
 

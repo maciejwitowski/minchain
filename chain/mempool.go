@@ -58,7 +58,7 @@ func (m *Mempool) DumpTx() {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	fmt.Printf("Current transactions (%d)\n", len(m.pendingTxs))
+	fmt.Printf("Pending transactions (%d)\n", len(m.pendingTxs))
 	for _, tx := range m.pendingTxs {
 		fmt.Println(tx.PrettyPrint())
 	}
@@ -74,12 +74,24 @@ func (m *Mempool) Size() int {
 	return len(m.pendingTxs)
 }
 
-func (m *Mempool) GetPendingTransactions() []Tx {
+func (m *Mempool) BuildBlockFromTransactions(builder func(txs []Tx) (*Block, error)) (*Block, error) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
+	if len(m.pendingTxs) == 0 {
+		return nil, nil
+	}
+
 	txCopy := make([]Tx, len(m.pendingTxs))
-	// TODO Remove from pending
 	copy(txCopy, m.pendingTxs)
-	return txCopy
+
+	block, err := builder(m.pendingTxs)
+	if err != nil {
+		return nil, err
+	}
+
+	// Block created successfully. We assume all pending have been handled and can be cleared
+	m.pendingTxs = m.pendingTxs[:0]
+
+	return block, err
 }

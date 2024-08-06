@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"log"
 	"time"
 )
 
@@ -16,25 +17,42 @@ func BlockProducer(mempool *Mempool) {
 	for {
 		select {
 		case <-blocktime.C:
-			txs := mempool.GetPendingTransactions()
-			txHash, err := Hash(txs)
+			block, err := mempool.BuildBlockFromTransactions(builder)
+
 			if err != nil {
-				fmt.Println("Block production failed. Skipping") // TODO error handling
+				log.Println("error building the block")
 				continue
 			}
 
-			parent := ChainstoreInstance.GetHead()
-			block := Block{
-				Header: BlockHeader{
-					ParentHash:      parent.Header.ParentHash,
-					TransactionHash: txHash,
-				},
-				Txs: txs,
+			if block == nil {
+				log.Println("empty block skipped")
+			} else {
+				log.Println("Produced block: ", block.PrettyPrint())
 			}
-
-			fmt.Println("Produced block: ", block.PrettyPrint())
 		}
 	}
+}
+
+type BlockBuilder interface {
+	buildBlock([]Tx) (*Block, error)
+}
+
+func builder(txs []Tx) (*Block, error) {
+	txHash, err := Hash(txs)
+	if err != nil {
+		fmt.Println("Block production failed. Skipping") // TODO error handling
+		return nil, err
+	}
+
+	parent := ChainstoreInstance.GetHead()
+	block := Block{
+		Header: BlockHeader{
+			ParentHash:      parent.Header.ParentHash,
+			TransactionHash: txHash,
+		},
+		Txs: txs,
+	}
+	return &block, nil
 }
 
 func Hash(txs []Tx) (common.Hash, error) {

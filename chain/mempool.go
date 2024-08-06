@@ -2,6 +2,7 @@ package chain
 
 import (
 	"fmt"
+	crypto "github.com/ethereum/go-ethereum/crypto"
 	"strings"
 	"sync"
 )
@@ -28,6 +29,17 @@ func (m *Mempool) HandleTransaction(tx Tx) {
 }
 
 func IsValid(tx Tx) bool {
+	digest := crypto.Keccak256([]byte(tx.Data))
+	publicKey, err := crypto.Ecrecover(digest, tx.Signature)
+	if err != nil {
+		fmt.Println("publicKey error")
+		return false
+	}
+
+	if !crypto.VerifySignature(publicKey, digest, tx.Signature) {
+		return false
+	}
+
 	return len(strings.TrimSpace(tx.Data)) > 0
 }
 

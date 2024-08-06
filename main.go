@@ -35,28 +35,12 @@ func main() {
 
 	fmt.Println(node.String())
 
-	subChan, errChan := node.SubscribeToTransactions(ctx)
-	var sub *pubsub.Subscription
-	select {
-	case sub = <-subChan:
-		fmt.Println("Subscribed to transactions.")
-		onSubscribedToTransactions(ctx, node, sub, mpool, wallet)
-	case err := <-errChan:
-		fmt.Println("Transactions subscription error:", err)
-	case <-ctx.Done():
-		fmt.Println("Transactions subscription timed out")
+	txSubscription, err := node.SubscribeToTransactions()
+	if err != nil {
+		fmt.Println("Error subscribing to transactions:", err)
+		return
 	}
-
-	subChan, errChan = node.SubscribeToBlocks(ctx)
-	select {
-	case sub = <-subChan:
-		fmt.Println("Subscribed to blocks.")
-		onSubscribedToBlocks(ctx, node, sub, mpool, wallet)
-	case err := <-errChan:
-		fmt.Println("Block subscription error:", err)
-	case <-ctx.Done():
-		fmt.Println("Block subscription timed out")
-	}
+	onSubscribedToTransactions(ctx, node, txSubscription, mpool, wallet)
 
 	go lib.Monitor(ctx, mpool, 1*time.Second)
 
@@ -73,11 +57,9 @@ func onSubscribedToTransactions(ctx context.Context, node *p2p.Node, sub *pubsub
 	messageProcessor := make(chan chain.Tx, 1)
 	go consumeTransactionsFromMempool(ctx, sub, messageProcessor)
 	go processMessages(ctx, messageProcessor, mpool)
-	if node.MpoolTopic != nil {
-		messages := make(chan string)
-		go readUserInput(messages)
-		go publishToMpool(ctx, node.MpoolTopic, wallet, messages)
-	}
+	messages := make(chan string)
+	go readUserInput(messages)
+	go publishToMpool(ctx, node.TxTopic, wallet, messages)
 }
 
 func onSubscribedToBlocks(ctx context.Context, node *p2p.Node, sub *pubsub.Subscription, mpool *chain.Mempool, wallet *chain.Wallet) {

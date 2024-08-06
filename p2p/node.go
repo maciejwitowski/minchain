@@ -19,8 +19,14 @@ var blocksTopic = "blocks"
 const DiscoveryServiceTag = "p2p-service"
 
 type Node struct {
-	MpoolTopic *pubsub.Topic
-	p2pHost    host.Host
+	TxTopic *pubsub.Topic
+	//transactionsSubscription *pubsub.Topic
+
+	blocksTopic *pubsub.Topic
+	//blocksSubscription *pubsub.Topic
+
+	p2pHost   host.Host
+	gossipSub *pubsub.PubSub
 }
 
 func InitNode(ctx context.Context, config *lib.Config) (*Node, error) {
@@ -30,7 +36,15 @@ func InitNode(ctx context.Context, config *lib.Config) (*Node, error) {
 		return nil, err
 	}
 
-	node := &Node{p2pHost: p2pHost}
+	gossipSub, err := pubsub.NewGossipSub(ctx, p2pHost)
+	if err != nil {
+		return nil, err
+	}
+
+	node := &Node{
+		p2pHost:   p2pHost,
+		gossipSub: gossipSub,
+	}
 
 	s := mdns.NewMdnsService(node.p2pHost, DiscoveryServiceTag, &discoveryNotifee{ctx: ctx, h: p2pHost})
 
@@ -65,55 +79,59 @@ func (n *Node) String() string {
 	return sb.String()
 }
 
-func (n *Node) SubscribeToTransactions(ctx context.Context) (<-chan *pubsub.Subscription, <-chan error) {
-	return n.subscribe(ctx, transactionsTopic)
+func (n *Node) SubscribeToTransactions() (*pubsub.Subscription, error) {
+	joinedTopic, err := n.gossipSub.Join(transactionsTopic)
+	if err != nil {
+		return nil, err
+	}
+
+	n.TxTopic = joinedTopic
+
+	subscription, err := joinedTopic.Subscribe()
+	if err != nil {
+		return nil, err
+	}
+
+	return subscription, nil
 }
 
-func (n *Node) SubscribeToBlocks(ctx context.Context) (<-chan *pubsub.Subscription, <-chan error) {
-	return n.subscribe(ctx, blocksTopic)
-}
+//func (n *Node) SubscribeToBlocks(ctx context.Context) (<-chan *pubsub.Subscription, <-chan error) {
+//	return n.subscribe(ctx, blocksTopic)
+//}
 
-func (n *Node) subscribe(ctx context.Context, topic string) (<-chan *pubsub.Subscription, <-chan error) {
-	fmt.Println("Subscribing...")
-	subChan := make(chan *pubsub.Subscription, 1)
-	errChan := make(chan error, 1)
-
-	var joinedTopic *pubsub.Topic
-
-	go func() {
-		defer close(subChan)
-		defer close(errChan)
-
-		pubSub, err := pubsub.NewGossipSub(ctx, n.p2pHost)
-		if err != nil {
-			errChan <- err
-			return
-		}
-
-		joinedTopic, err = pubSub.Join(topic)
-		if err != nil {
-			errChan <- err
-			return
-		}
-		fmt.Println("Joined topic ", topic)
-
-		subscription, err := joinedTopic.Subscribe()
-		if err != nil {
-			errChan <- err
-			return
-		}
-
-		n.MpoolTopic = joinedTopic
-
-		select {
-		case subChan <- subscription:
-		case <-ctx.Done():
-			errChan <- ctx.Err()
-		}
-	}()
-
-	return subChan, errChan
-}
+//func (n *Node) subscribe(ctx context.Context, topic string) (*pubsub.Subscription, <-chan error) {
+//	fmt.Println("Subscribing...")
+//	subChan := make(chan *pubsub.Subscription, 1)
+//	errChan := make(chan error, 1)
+//
+//	go func() {
+//		defer close(subChan)
+//		defer close(errChan)
+//
+//		joinedTopic, err := n.gossipSub.Join(topic)
+//		if err != nil {
+//			errChan <- err
+//			return
+//		}
+//		fmt.Println("Joined topic ", topic)
+//
+//		subscription, err := joinedTopic.Subscribe()
+//		if err != nil {
+//			errChan <- err
+//			return
+//		}
+//
+//		n.MpoolTopic = joinedTopic
+//
+//		select {
+//		case subChan <- subscription:
+//		case <-ctx.Done():
+//			errChan <- ctx.Err()
+//		}
+//	}()
+//
+//	return subChan, errChan
+//}
 
 func (n *Node) Hostname() string {
 	return n.p2pHost.ID().String()

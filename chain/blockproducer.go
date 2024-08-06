@@ -24,9 +24,7 @@ func BlockProducer(mempool *Mempool) {
 				continue
 			}
 
-			if block == nil {
-				log.Println("empty block skipped")
-			} else {
+			if block != nil {
 				log.Println("Produced block: ", block.PrettyPrint())
 			}
 		}

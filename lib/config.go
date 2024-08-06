@@ -7,14 +7,16 @@ import (
 )
 
 type Config struct {
-	PubSubTopic   string
-	ListeningPort int
-	PrivateKey    *ecdsa.PrivateKey
+	PubSubTopic     string
+	ListeningPort   int
+	PrivateKey      *ecdsa.PrivateKey
+	IsBlockProducer bool
 }
 
 func InitConfig() (*Config, error) {
-	topic := flag.String("t", "", "pubsub topic")
-	port := flag.Int("l", 0, "wait for incoming connections")
+	topic := flag.String("topic", "", "pubsub topic")
+	port := flag.Int("port", 0, "wait for incoming connections")
+	isBlockProducer := flag.Bool("block-producer", false, "whether this node is a block producer")
 	flag.Parse()
 
 	privateKey, err := ethcrypto.LoadECDSA(".pk")
@@ -23,8 +25,9 @@ func InitConfig() (*Config, error) {
 	}
 
 	return &Config{
-		PubSubTopic:   *topic,
-		ListeningPort: *port,
-		PrivateKey:    privateKey,
+		PubSubTopic:     *topic,
+		ListeningPort:   *port,
+		IsBlockProducer: *isBlockProducer,
+		PrivateKey:      privateKey,
 	}, nil
 }

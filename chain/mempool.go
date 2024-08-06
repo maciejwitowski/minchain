@@ -8,14 +8,14 @@ import (
 )
 
 type Mempool struct {
-	lock  sync.Mutex
-	mpool []Tx
+	lock       sync.Mutex
+	pendingTxs []Tx
 }
 
 func InitMempool() *Mempool {
 	return &Mempool{
-		lock:  sync.Mutex{},
-		mpool: make([]Tx, 0),
+		lock:       sync.Mutex{},
+		pendingTxs: make([]Tx, 0),
 	}
 }
 
@@ -24,7 +24,7 @@ func (m *Mempool) HandleTransaction(tx Tx) {
 	defer m.lock.Unlock()
 
 	if IsValid(tx) {
-		m.mpool = append(m.mpool, tx)
+		m.pendingTxs = append(m.pendingTxs, tx)
 	}
 }
 
@@ -58,15 +58,28 @@ func (m *Mempool) DumpTx() {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	fmt.Printf("Current transactions (%d)\n", len(m.mpool))
-	for _, tx := range m.mpool {
+	fmt.Printf("Current transactions (%d)\n", len(m.pendingTxs))
+	for _, tx := range m.pendingTxs {
 		fmt.Println(tx.PrettyPrint())
 	}
-	if len(m.mpool) > 0 {
+	if len(m.pendingTxs) > 0 {
 		fmt.Println("--------")
 	}
 }
 
 func (m *Mempool) Size() int {
-	return len(m.mpool)
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	return len(m.pendingTxs)
+}
+
+func (m *Mempool) GetPendingTransactions() []Tx {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	txCopy := make([]Tx, len(m.pendingTxs))
+	// TODO Remove from pending
+	copy(txCopy, m.pendingTxs)
+	return txCopy
 }

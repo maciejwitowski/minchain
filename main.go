@@ -48,6 +48,11 @@ func main() {
 	}
 
 	go lib.Monitor(ctx, mpool, 1*time.Second)
+
+	if config.IsBlockProducer {
+		go chain.BlockProducer(mpool)
+	}
+
 	select {}
 }
 

@@ -54,12 +54,25 @@ func main() {
 // Extract to separate service
 func onSubscribed(ctx context.Context, node *p2p.Node, sub *pubsub.Subscription, mpool *chain.Mempool, wallet *chain.Wallet) {
 	messageProcessor := make(chan chain.Tx, 1)
-	go readMessages(ctx, sub, messageProcessor)
+	go consumeFromMpool(ctx, sub, messageProcessor)
 	go processMessages(ctx, messageProcessor, mpool)
 	if node.Topic != nil {
-		go func() {
-			NewPublisher(node.Topic).StartPublishing(ctx, wallet)
-		}()
+		messages := make(chan string)
+		go readUserInput(messages)
+		go publishToMpool(ctx, node.Topic, wallet, messages)
+	}
+}
+
+func readUserInput(messages chan<- string) {
+	reader := bufio.NewReader(os.Stdin)
+
+	for {
+		fmt.Print("> ")
+		message, err := reader.ReadString('\n')
+		if err != nil {
+			fmt.Println("Error reading the message:", err)
+		}
+		messages <- message
 	}
 }
 
@@ -76,7 +89,7 @@ func processMessages(ctx context.Context, processor chan chain.Tx, mpool *chain.
 	}
 }
 
-func readMessages(ctx context.Context, sub *pubsub.Subscription, messageProcessor chan<- chain.Tx) {
+func consumeFromMpool(ctx context.Context, sub *pubsub.Subscription, messageProcessor chan<- chain.Tx) {
 	for {
 		msg, err := sub.Next(ctx)
 		if err != nil {
@@ -92,27 +105,8 @@ func readMessages(ctx context.Context, sub *pubsub.Subscription, messageProcesso
 	}
 }
 
-type ReaderPublisher struct {
-	reader *bufio.Reader
-	topic  *pubsub.Topic
-}
-
-func NewPublisher(topic *pubsub.Topic) *ReaderPublisher {
-	return &ReaderPublisher{
-		reader: bufio.NewReader(os.Stdin),
-		topic:  topic,
-	}
-}
-
-func (rp *ReaderPublisher) StartPublishing(ctx context.Context, wallet *chain.Wallet) {
-	for {
-		fmt.Print("> ")
-		message, err := rp.reader.ReadString('\n')
-		if err != nil {
-			fmt.Println("Error reading the message:", err)
-			return
-		}
-
+func publishToMpool(ctx context.Context, topic *pubsub.Topic, wallet *chain.Wallet, userInput <-chan string) {
+	for message := range userInput {
 		tx, err := wallet.SignedTransaction(message)
 		if err != nil {
 			fmt.Println("Error building transaction:", err)
@@ -125,7 +119,7 @@ func (rp *ReaderPublisher) StartPublishing(ctx context.Context, wallet *chain.Wa
 			return
 		}
 
-		if err := rp.topic.Publish(ctx, txJson); err != nil {
+		if err := topic.Publish(ctx, txJson); err != nil {
 			fmt.Println("Publish error:", err)
 		}
 	}

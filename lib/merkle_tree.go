@@ -27,7 +27,6 @@ type MerkleTree struct {
 // Node represents a node, root, or leaf in the tree. It stores pointers to its immediate
 // relationships, a hash, the content stored if it is a leaf, and other metadata.
 type Node struct {
-	Tree   *MerkleTree
 	Parent *Node
 	Left   *Node
 	Right  *Node
@@ -135,7 +134,6 @@ func buildWithContent(cs []Content, t *MerkleTree) (*Node, []*Node, error) {
 			Hash: hash,
 			C:    c,
 			leaf: true,
-			Tree: t,
 		})
 	}
 	if len(leafs)%2 == 1 {
@@ -144,7 +142,6 @@ func buildWithContent(cs []Content, t *MerkleTree) (*Node, []*Node, error) {
 			C:    leafs[len(leafs)-1].C,
 			leaf: true,
 			dup:  true,
-			Tree: t,
 		}
 		leafs = append(leafs, duplicate)
 	}
@@ -174,7 +171,6 @@ func buildIntermediate(nl []*Node, t *MerkleTree) (*Node, error) {
 			Left:  nl[left],
 			Right: nl[right],
 			Hash:  h.Sum(nil),
-			Tree:  t,
 		}
 		nodes = append(nodes, n)
 		nl[left].Parent = n

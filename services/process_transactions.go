@@ -25,43 +25,13 @@ func NewProcessTransactionsService(mempool core.Mempool, wallet *core.Wallet, us
 }
 
 func (p *ProcessTransactions) Start(ctx context.Context, sub *pubsub.Subscription) {
-	messageProcessor := make(chan types.Tx, 1)
-	go p.publishToMpool(ctx)
-	go p.consumeTransactionsFromMempool(ctx, sub, messageProcessor)
-	go p.processMessages(ctx, messageProcessor)
+	go p.publishInputToMempool(ctx)
+	go p.processMempoolTransactions(ctx, sub)
 }
 
-func (p *ProcessTransactions) consumeTransactionsFromMempool(ctx context.Context, sub *pubsub.Subscription, messageProcessor chan<- types.Tx) {
-	for {
-		msg, err := sub.Next(ctx)
-		if err != nil {
-			log.Println("Subscription error:", err)
-			return
-		}
-		txJson, err := types.FromJSON(msg.Data)
-		if err != nil {
-			log.Println("Error deserializing tx:", err)
-			return
-		}
-		messageProcessor <- *txJson
-	}
-}
-
-func (p *ProcessTransactions) processMessages(ctx context.Context, processor chan types.Tx) {
-	for {
-		select {
-		case tx := <-processor:
-			// Add Tx to mpool
-			p.mempool.ValidateAndStorePending(tx)
-		case <-ctx.Done():
-			log.Println("processMessages cancelled")
-			return
-		}
-	}
-}
-
-func (p *ProcessTransactions) publishToMpool(ctx context.Context) {
+func (p *ProcessTransactions) publishInputToMempool(ctx context.Context) {
 	for message := range p.userInput {
+		log.Println("user input: ", message)
 		tx, err := p.wallet.SignedTransaction(message)
 		if err != nil {
 			log.Println("Error building transaction:", err)
@@ -74,8 +44,25 @@ func (p *ProcessTransactions) publishToMpool(ctx context.Context) {
 			return
 		}
 
+		log.Println("Publishing: ", tx.PrettyPrint())
 		if err := p.pubSubTopic.Publish(ctx, txJson); err != nil {
 			log.Println("Publish error:", err)
 		}
+	}
+}
+
+func (p *ProcessTransactions) processMempoolTransactions(ctx context.Context, sub *pubsub.Subscription) {
+	for {
+		msg, err := sub.Next(ctx)
+		if err != nil {
+			log.Println("Subscription error:", err)
+			return
+		}
+		tx, err := types.FromJSON(msg.Data)
+		if err != nil {
+			log.Println("Error deserializing tx:", err)
+			return
+		}
+		p.mempool.ValidateAndStorePending(tx)
 	}
 }

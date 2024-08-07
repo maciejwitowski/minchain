@@ -2,7 +2,7 @@ package core
 
 import (
 	"github.com/ethereum/go-ethereum/common"
-	crypto "github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/crypto"
 	"log"
 	"minchain/core/types"
 	"strings"
@@ -10,24 +10,24 @@ import (
 )
 
 type Mempool interface {
-	ValidateAndStorePending(transations types.Tx)
+	ValidateAndStorePending(transations *types.Tx)
 	ListPendingTransactions() []types.Tx
 	PruneTransactions(transactions []types.Tx)
 }
 
 type MemoryMempool struct {
 	lock                sync.Mutex
-	pendingTransactions map[common.Hash]types.Tx
+	pendingTransactions map[common.Hash]*types.Tx
 }
 
 func InitMempool() Mempool {
 	return &MemoryMempool{
 		lock:                sync.Mutex{},
-		pendingTransactions: make(map[common.Hash]types.Tx),
+		pendingTransactions: make(map[common.Hash]*types.Tx),
 	}
 }
 
-func (m *MemoryMempool) ValidateAndStorePending(tx types.Tx) {
+func (m *MemoryMempool) ValidateAndStorePending(tx *types.Tx) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -42,7 +42,7 @@ func (m *MemoryMempool) ValidateAndStorePending(tx types.Tx) {
 	}
 }
 
-func IsValid(tx types.Tx) bool {
+func IsValid(tx *types.Tx) bool {
 	if len(strings.TrimSpace(tx.Data)) == 0 {
 		return false
 	}
@@ -74,7 +74,7 @@ func (m *MemoryMempool) ListPendingTransactions() []types.Tx {
 
 	transactions := make([]types.Tx, 0)
 	for _, tx := range m.pendingTransactions {
-		transactions = append(transactions, tx)
+		transactions = append(transactions, *tx)
 	}
 	return transactions
 }

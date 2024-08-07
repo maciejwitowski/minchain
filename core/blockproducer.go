@@ -34,11 +34,9 @@ func (bp *BlockProducer) BuildAndPublishBlock(ctx context.Context) {
 	for {
 		select {
 		case <-blocktime.C:
-			log.Println("Check if block should be produced")
 			// TODO more advanced selection logic
 			transactions := bp.mempool.ListPendingTransactions()
 			if len(transactions) == 0 {
-				log.Println("Skipping empty block")
 				continue
 			}
 

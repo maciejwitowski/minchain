@@ -19,9 +19,8 @@ type Content interface {
 // MerkleTree is the container for the tree. It holds a pointer to the root of the tree,
 // a list of pointers to the leaf nodes, and the merkle root.
 type MerkleTree struct {
-	Root       *Node
-	merkleRoot []byte
-	Leafs      []*Node
+	Root  *Node
+	Leafs []*Node
 }
 
 // Node represents a node, root, or leaf in the tree. It stores pointers to its immediate
@@ -31,7 +30,6 @@ type Node struct {
 	Left   *Node
 	Right  *Node
 	leaf   bool
-	dup    bool
 	Hash   []byte
 	C      Content
 }
@@ -83,11 +81,10 @@ func NewTree(cs []Content) (*MerkleTree, error) {
 	}
 	t.Root = root
 	t.Leafs = leafs
-	t.merkleRoot = root.Hash
 	return t, nil
 }
 
-// GetMerklePath: Get Merkle path and indexes(left leaf or right leaf)
+// GetMerklePath Get Merkle path and indexes(left leaf or right leaf)
 func (m *MerkleTree) GetMerklePath(content Content) ([][]byte, []int64, error) {
 	for _, current := range m.Leafs {
 		ok, err := current.C.Equals(content)
@@ -141,7 +138,6 @@ func buildWithContent(cs []Content, t *MerkleTree) (*Node, []*Node, error) {
 			Hash: leafs[len(leafs)-1].Hash,
 			C:    leafs[len(leafs)-1].C,
 			leaf: true,
-			dup:  true,
 		}
 		leafs = append(leafs, duplicate)
 	}
@@ -159,7 +155,7 @@ func buildIntermediate(nl []*Node, t *MerkleTree) (*Node, error) {
 	var nodes []*Node
 	for i := 0; i < len(nl); i += 2 {
 		h := sha256.New()
-		var left, right int = i, i + 1
+		var left, right = i, i + 1
 		if i+1 == len(nl) {
 			right = i
 		}
@@ -182,42 +178,6 @@ func buildIntermediate(nl []*Node, t *MerkleTree) (*Node, error) {
 	return buildIntermediate(nodes, t)
 }
 
-// MerkleRoot returns the unverified Merkle Root (hash of the root node) of the tree.
-func (m *MerkleTree) MerkleRoot() []byte {
-	return m.merkleRoot
-}
-
-// RebuildTree is a helper function that will rebuild the tree reusing only the content that
-// it holds in the leaves.
-func (m *MerkleTree) RebuildTree() error {
-	var cs []Content
-	for _, c := range m.Leafs {
-		cs = append(cs, c.C)
-	}
-	root, leafs, err := buildWithContent(cs, m)
-	if err != nil {
-		return err
-	}
-	m.Root = root
-	m.Leafs = leafs
-	m.merkleRoot = root.Hash
-	return nil
-}
-
-// RebuildTreeWith replaces the content of the tree and does a complete rebuild; while the root of
-// the tree will be replaced the MerkleTree completely survives this operation. Returns an error if the
-// list of content cs contains no entries.
-func (m *MerkleTree) RebuildTreeWith(cs []Content) error {
-	root, leafs, err := buildWithContent(cs, m)
-	if err != nil {
-		return err
-	}
-	m.Root = root
-	m.Leafs = leafs
-	m.merkleRoot = root.Hash
-	return nil
-}
-
 // VerifyTree verify tree validates the hashes at each level of the tree and returns true if the
 // resulting hash at the root of the tree matches the resulting root hash; returns false otherwise.
 func (m *MerkleTree) VerifyTree() (bool, error) {
@@ -226,7 +186,7 @@ func (m *MerkleTree) VerifyTree() (bool, error) {
 		return false, err
 	}
 
-	if bytes.Compare(m.merkleRoot, calculatedMerkleRoot) == 0 {
+	if bytes.Compare(m.Root.Hash, calculatedMerkleRoot) == 0 {
 		return true, nil
 	}
 	return false, nil
@@ -268,11 +228,6 @@ func (m *MerkleTree) VerifyContent(content Content) (bool, error) {
 		}
 	}
 	return false, nil
-}
-
-// String returns a string representation of the node.
-func (n *Node) String() string {
-	return fmt.Sprintf("%t %t %v %s", n.leaf, n.dup, n.Hash, n.C)
 }
 
 // String returns a string representation of the tree. Only leaf nodes are included

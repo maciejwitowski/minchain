@@ -9,6 +9,7 @@ import (
 	"minchain/core"
 	"minchain/core/types"
 	"minchain/database"
+	"minchain/genesis"
 	"minchain/lib"
 	"minchain/p2p"
 	"minchain/validator"
@@ -28,8 +29,16 @@ func main() {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	// TODO Better dependency injection
 	mpool := core.InitMempool()
 	db := database.NewMemoryDatabase()
+	chainstore := core.NewChainstore(db)
+
+	err = genesis.InitializeGenesisState(db, chainstore)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println("Initialised genesis")
 
 	node, err := p2p.InitNode(ctx, config)
 	wallet := core.NewWallet(config.PrivateKey)
@@ -51,13 +60,13 @@ func main() {
 		fmt.Println("Error subscribing to blocks:", err)
 		return
 	}
-	onSubscribedToBlocks(ctx, blkSubscription, mpool, db)
+	onSubscribedToBlocks(ctx, blkSubscription, mpool, db, chainstore)
 
 	go lib.Monitor(ctx, mpool, 1*time.Second)
 
 	log.Println("IsBlockProducer=", config.IsBlockProducer)
 	if config.IsBlockProducer {
-		go core.BlockProducer(ctx, mpool, node.BlocksTopic)
+		go core.NewBlockProducer(mpool, node.BlocksTopic, chainstore).BuildAndPublishBlock(ctx)
 	}
 
 	select {}
@@ -73,10 +82,10 @@ func onSubscribedToTransactions(ctx context.Context, node *p2p.Node, sub *pubsub
 	go publishToMpool(ctx, node.TxTopic, wallet, messages)
 }
 
-func onSubscribedToBlocks(ctx context.Context, sub *pubsub.Subscription, mpool *core.Mempool, db database.Database) {
+func onSubscribedToBlocks(ctx context.Context, sub *pubsub.Subscription, mpool *core.Mempool, db database.Database, store *core.Chainstore) {
 	blocksProcessor := make(chan types.Block, 1)
 	go consumeBlocksFromMempool(ctx, sub, blocksProcessor)
-	go processBlocks(ctx, blocksProcessor, mpool, db)
+	go processBlocks(ctx, blocksProcessor, mpool, db, store)
 }
 
 func readUserInput(messages chan<- string) {
@@ -137,7 +146,7 @@ func consumeBlocksFromMempool(ctx context.Context, sub *pubsub.Subscription, blo
 	}
 }
 
-func processBlocks(ctx context.Context, processor chan types.Block, mpool *core.Mempool, db database.Database) {
+func processBlocks(ctx context.Context, processor chan types.Block, mpool *core.Mempool, db database.Database, store *core.Chainstore) {
 	for {
 		select {
 		case blk := <-processor:
@@ -149,6 +158,7 @@ func processBlocks(ctx context.Context, processor chan types.Block, mpool *core.
 				continue
 			}
 			db.PutBlock(&blk)
+			store.SetHead(&blk)
 			mpool.PruneTransactions(blk.Transactions)
 		case <-ctx.Done():
 			fmt.Println("processBlocks cancelled")

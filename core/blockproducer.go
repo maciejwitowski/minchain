@@ -13,7 +13,22 @@ import (
 )
 
 // BlockProducer reads mempool and then produces and publishes a block
-func BlockProducer(ctx context.Context, mempool *Mempool, topic *pubsub.Topic) {
+type BlockProducer struct {
+	mempool    *Mempool
+	topic      *pubsub.Topic
+	chainstore *Chainstore
+}
+
+func NewBlockProducer(mempool *Mempool, topic *pubsub.Topic, chainstore *Chainstore) *BlockProducer {
+	return &BlockProducer{
+		mempool:    mempool,
+		topic:      topic,
+		chainstore: chainstore,
+	}
+}
+
+// TODO Split block production and publishing
+func (bp *BlockProducer) BuildAndPublishBlock(ctx context.Context) {
 	blocktime := time.NewTicker(5 * time.Second)
 	defer blocktime.Stop()
 
@@ -21,7 +36,7 @@ func BlockProducer(ctx context.Context, mempool *Mempool, topic *pubsub.Topic) {
 		select {
 		case <-blocktime.C:
 			log.Println("Check if block should be produced")
-			block, err := mempool.BuildBlockFromTransactions(builder)
+			block, err := bp.mempool.BuildBlockFromTransactions(bp)
 
 			if err != nil {
 				log.Println("error building the block")
@@ -37,7 +52,7 @@ func BlockProducer(ctx context.Context, mempool *Mempool, topic *pubsub.Topic) {
 					return
 				}
 
-				if err := topic.Publish(ctx, blkJson); err != nil {
+				if err := bp.topic.Publish(ctx, blkJson); err != nil {
 					fmt.Println("Publish error:", err)
 				}
 			}
@@ -49,17 +64,17 @@ type BlockBuilder interface {
 	buildBlock([]types.Tx) (*types.Block, error)
 }
 
-func builder(txs []types.Tx) (*types.Block, error) {
+func (bp *BlockProducer) builder(txs []types.Tx) (*types.Block, error) {
 	txHash, err := Hash(txs)
 	if err != nil {
 		fmt.Println("Block production failed. Skipping") // TODO error handling
 		return nil, err
 	}
 
-	parent := ChainstoreInstance.GetHead()
+	parent := bp.chainstore.GetHead()
 	block := types.Block{
 		Header: types.BlockHeader{
-			ParentHash:      parent.Header.ParentHash,
+			ParentHash:      parent.BlockHash(),
 			TransactionHash: txHash,
 		},
 		Transactions: txs,

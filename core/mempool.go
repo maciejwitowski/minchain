@@ -82,7 +82,7 @@ func (m *Mempool) Size() int {
 	return len(m.pendingTransactions)
 }
 
-func (m *Mempool) BuildBlockFromTransactions(builder func(txs []types.Tx) (*types.Block, error)) (*types.Block, error) {
+func (m *Mempool) BuildBlockFromTransactions(blockProducer *BlockProducer) (*types.Block, error) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -90,13 +90,14 @@ func (m *Mempool) BuildBlockFromTransactions(builder func(txs []types.Tx) (*type
 		return nil, nil
 	}
 
-	selectTransactions := make([]types.Tx, len(m.pendingTransactions))
+	selectTransactions := make([]types.Tx, 0)
 	for _, tx := range m.pendingTransactions {
 		// TODO more advanced selection logic
 		selectTransactions = append(selectTransactions, tx)
 	}
 
-	block, err := builder(selectTransactions)
+	// TODO Refactor to lower coupling between mempool and block producer
+	block, err := blockProducer.builder(selectTransactions)
 	if err != nil {
 		return nil, err
 	}

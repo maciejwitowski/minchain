@@ -1,38 +1,39 @@
 package core
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	"minchain/core/types"
+	"minchain/database"
+	"sync"
 )
 
-var ChainstoreInstance = NewChainstore()
-
 type Chainstore struct {
-	blocks       []*types.Block
-	blocksLookup map[common.Hash]types.Block
+	lock sync.Mutex
+
+	db   database.Database
+	head *types.Block
 }
 
-func NewChainstore() *Chainstore {
+func NewChainstore(db database.Database) *Chainstore {
 	return &Chainstore{
-		blocksLookup: make(map[common.Hash]types.Block),
+		db: db,
 	}
 }
 
-func (c *Chainstore) AddBlock(block *types.Block) {
+func (c *Chainstore) SetHead(block *types.Block) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
 
+	c.head = block
 }
 
 func (c *Chainstore) GetHead() *types.Block {
-	if len(c.blocks) > 0 {
-		return c.blocks[len(c.blocks)-1]
-	} else {
-		// empty "genesis" block
-		return &types.Block{
-			Header: types.BlockHeader{
-				ParentHash:      common.Hash{},
-				TransactionHash: common.Hash{},
-			},
-			Transactions: make([]types.Tx, 0),
-		}
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	if c.head == nil {
+		// Assumes genesis block has been initialised and exists in DB
+		c.db.GetBlockByHash(GenesisBlockHash)
 	}
+
+	return c.head
 }

@@ -29,27 +29,33 @@ func NewProcessBlocksService(blockValidator validator.Validator, database databa
 func (p *ProcessBlocks) Start(ctx context.Context, sub *pubsub.Subscription) {
 	go func() {
 		for {
-			msg, err := sub.Next(ctx)
-			if err != nil {
-				log.Println("Subscription error:", err)
+			select {
+			case <-ctx.Done():
+				log.Println("context cancelled, stopping processing blocks")
 				return
-			}
-			block, err := types.BlockFromJson(msg.Data)
-			if err != nil {
-				log.Println("Error deserializing block:", err)
-				return
-			}
+			default:
+				msg, err := sub.Next(ctx)
+				if err != nil {
+					log.Println("Subscription error:", err)
+					return
+				}
+				block, err := types.BlockFromJson(msg.Data)
+				if err != nil {
+					log.Println("Error deserializing block:", err)
+					return
+				}
 
-			log.Println("Received block: ", block.BlockHash())
-			err = p.blockValidator.Validate(block)
-			if err != nil {
-				log.Println("validator error ", err)
-				continue
-			}
+				log.Println("Received block: ", block.BlockHash())
+				err = p.blockValidator.Validate(block)
+				if err != nil {
+					log.Println("validator error ", err)
+					continue
+				}
 
-			p.database.PutBlock(block)
-			p.chainstore.SetHead(block)
-			p.mempool.PruneTransactions(block.Transactions)
+				p.database.PutBlock(block)
+				p.chainstore.SetHead(block)
+				p.mempool.PruneTransactions(block.Transactions)
+			}
 		}
 	}()
 }

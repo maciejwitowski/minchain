@@ -36,8 +36,10 @@ func (bp *BlockProducer) BuildAndPublishBlock(ctx context.Context) {
 		select {
 		case <-blocktime.C:
 			log.Println("Check if block should be produced")
-			block, err := bp.mempool.BuildBlockFromTransactions(bp)
+			// TODO more advanced selection logic
+			transactions := bp.mempool.ListPendingTransactions()
 
+			block, err := bp.buildBlock(transactions)
 			if err != nil {
 				log.Println("error building the block")
 				continue
@@ -49,12 +51,14 @@ func (bp *BlockProducer) BuildAndPublishBlock(ctx context.Context) {
 				blkJson, err := block.ToJson()
 				if err != nil {
 					fmt.Println("Serialization error :", err)
-					return
+					continue
 				}
 
 				if err := bp.topic.Publish(ctx, blkJson); err != nil {
 					fmt.Println("Publish error:", err)
 				}
+
+				bp.mempool.PruneTransactions(block.Transactions)
 			}
 		}
 	}
@@ -64,7 +68,7 @@ type BlockBuilder interface {
 	buildBlock([]types.Tx) (*types.Block, error)
 }
 
-func (bp *BlockProducer) builder(txs []types.Tx) (*types.Block, error) {
+func (bp *BlockProducer) buildBlock(txs []types.Tx) (*types.Block, error) {
 	txHash, err := Hash(txs)
 	if err != nil {
 		fmt.Println("Block production failed. Skipping") // TODO error handling

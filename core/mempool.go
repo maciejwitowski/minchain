@@ -82,33 +82,21 @@ func (m *Mempool) Size() int {
 	return len(m.pendingTransactions)
 }
 
-func (m *Mempool) BuildBlockFromTransactions(blockProducer *BlockProducer) (*types.Block, error) {
+func (m *Mempool) ListPendingTransactions() []types.Tx {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	if len(m.pendingTransactions) == 0 {
-		return nil, nil
-	}
-
-	selectTransactions := make([]types.Tx, 0)
+	transactions := make([]types.Tx, 0)
 	for _, tx := range m.pendingTransactions {
-		// TODO more advanced selection logic
-		selectTransactions = append(selectTransactions, tx)
+		transactions = append(transactions, tx)
 	}
-
-	// TODO Refactor to lower coupling between mempool and block producer
-	block, err := blockProducer.builder(selectTransactions)
-	if err != nil {
-		return nil, err
-	}
-
-	// Block created successfully. We assume all pending have been handled and can be cleared
-	clear(m.pendingTransactions)
-
-	return block, err
+	return transactions
 }
 
 func (m *Mempool) PruneTransactions(transactions []types.Tx) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
 	for _, t := range transactions {
 		hash, err := t.Hash()
 		if err != nil {

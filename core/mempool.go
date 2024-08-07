@@ -3,6 +3,7 @@ package core
 import (
 	"github.com/ethereum/go-ethereum/common"
 	crypto "github.com/ethereum/go-ethereum/crypto"
+	"log"
 	"minchain/core/types"
 	"strings"
 	"sync"

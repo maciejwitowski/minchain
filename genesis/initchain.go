@@ -2,6 +2,7 @@ package genesis
 
 import (
 	"errors"
+	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"minchain/core"
 	"minchain/core/types"
@@ -19,7 +20,7 @@ func InitializeGenesisState(db database.Database, store core.Chainstore) error {
 
 	blockHash := genesisBlock.BlockHash()
 	if blockHash != core.GenesisBlockHash {
-		errText := log.Sprintf("Incorrect genesis hash %s", blockHash)
+		errText := fmt.Sprintf("Incorrect genesis hash %s", blockHash)
 		return errors.New(errText)
 	}
 

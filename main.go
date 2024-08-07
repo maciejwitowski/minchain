@@ -33,19 +33,11 @@ func main() {
 	log.Println(node.String())
 
 	launchTransactionsProcessing(ctx, node)
-
-	blkSubscription, err := node.SubscribeToBlocks()
-	if err != nil {
-		log.Println("Error subscribing to blocks:", err)
-		return
-	}
-	onSubscribedToBlocks(ctx, blkSubscription)
+	launchBlocksProcessing(ctx, node)
 
 	go lib.Monitor(ctx, Dependencies.Mempool, 1*time.Second)
 
-	isBlockProducer := Dependencies.Config.IsBlockProducer
-	log.Println("IsBlockProducer=", isBlockProducer)
-	if isBlockProducer {
+	if Dependencies.Config.IsBlockProducer {
 		go core.NewBlockProducer(Dependencies.Mempool, node.BlocksTopic, Dependencies.Chainstore).BuildAndPublishBlock(ctx)
 	}
 
@@ -76,6 +68,23 @@ func launchTransactionsProcessing(ctx context.Context, node *p2p.Node) {
 	)
 	processTransactions.Start(ctx, txSubscription)
 }
+
+func launchBlocksProcessing(ctx context.Context, node *p2p.Node) {
+	blockSubscription, err := node.SubscribeToBlocks()
+	if err != nil {
+		log.Println("Error subscribing to blocks:", err)
+		return
+	}
+
+	blocksProcessing := services.NewProcessBlocksService(
+		Dependencies.BlockValidator,
+		Dependencies.Database,
+		Dependencies.Chainstore,
+		Dependencies.Mempool,
+	)
+	blocksProcessing.Start(ctx, blockSubscription)
+}
+
 func onSubscribedToBlocks(ctx context.Context, sub *pubsub.Subscription) {
 	blocksProcessor := make(chan types.Block, 1)
 	go consumeBlocksFromMempool(ctx, sub, blocksProcessor)

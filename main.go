@@ -33,20 +33,7 @@ func main() {
 
 	fmt.Println(node.String())
 
-	txSubscription, err := node.SubscribeToTransactions()
-	if err != nil {
-		fmt.Println("Error subscribing to transactions:", err)
-		return
-	}
-
-	userInput := lib.UserInput(ctx)
-	processTransactions := services.NewProcessTransactionsService(
-		Dependencies.Mempool,
-		Dependencies.Wallet,
-		userInput,
-		node.TxTopic,
-	)
-	processTransactions.Start(ctx, txSubscription)
+	launchTransactionsProcessing(ctx, node)
 
 	blkSubscription, err := node.SubscribeToBlocks()
 	if err != nil {
@@ -74,6 +61,22 @@ func initializeGenesisState(app *lib.App) {
 	log.Println("Initialised genesis")
 }
 
+func launchTransactionsProcessing(ctx context.Context, node *p2p.Node) {
+	txSubscription, err := node.SubscribeToTransactions()
+	if err != nil {
+		fmt.Println("Error subscribing to transactions:", err)
+		return
+	}
+
+	userInput := lib.UserInput(ctx)
+	processTransactions := services.NewProcessTransactionsService(
+		Dependencies.Mempool,
+		Dependencies.Wallet,
+		userInput,
+		node.TxTopic,
+	)
+	processTransactions.Start(ctx, txSubscription)
+}
 func onSubscribedToBlocks(ctx context.Context, sub *pubsub.Subscription) {
 	blocksProcessor := make(chan types.Block, 1)
 	go consumeBlocksFromMempool(ctx, sub, blocksProcessor)

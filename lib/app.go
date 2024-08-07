@@ -12,9 +12,11 @@ type App struct {
 	Database       database.Database
 	Chainstore     core.Chainstore
 	BlockValidator validator.Validator
+	Wallet         *core.Wallet
+	Config         Config
 }
 
-func InitApplicationDependencies() *App {
+func InitApplicationDependencies(config Config) *App {
 	db := database.NewMemoryDatabase()
 
 	return &App{
@@ -22,5 +24,7 @@ func InitApplicationDependencies() *App {
 		Database:       db,
 		Chainstore:     core.NewChainstore(db),
 		BlockValidator: validator.NewBlockValidator(db),
+		Wallet:         core.NewWallet(config.PrivateKey),
+		Config:         config,
 	}
 }

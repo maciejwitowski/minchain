@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -11,19 +10,14 @@ import (
 	"minchain/genesis"
 	"minchain/lib"
 	"minchain/p2p"
-	"os"
+	"minchain/services"
 	"time"
 )
 
-var Dependencies = lib.InitApplicationDependencies()
+var Dependencies = lib.InitApplicationDependencies(lib.InitConfig())
 
 func main() {
 	//logging.SetAllLoggers(logging.LevelDebug)
-
-	config, err := lib.InitConfig()
-	if err != nil {
-		log.Fatal("Init config error:", err)
-	}
 
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
@@ -32,8 +26,7 @@ func main() {
 	// TODO Better dependency injection
 	initializeGenesisState(Dependencies)
 
-	node, err := p2p.InitNode(ctx, config)
-	wallet := core.NewWallet(config.PrivateKey)
+	node, err := p2p.InitNode(ctx, Dependencies.Config)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -45,7 +38,15 @@ func main() {
 		fmt.Println("Error subscribing to transactions:", err)
 		return
 	}
-	onSubscribedToTransactions(ctx, node, txSubscription, wallet)
+
+	userInput := lib.UserInput(ctx)
+	processTransactions := services.NewProcessTransactionsService(
+		Dependencies.Mempool,
+		Dependencies.Wallet,
+		userInput,
+		node.TxTopic,
+	)
+	processTransactions.Start(ctx, txSubscription)
 
 	blkSubscription, err := node.SubscribeToBlocks()
 	if err != nil {
@@ -56,8 +57,9 @@ func main() {
 
 	go lib.Monitor(ctx, Dependencies.Mempool, 1*time.Second)
 
-	log.Println("IsBlockProducer=", config.IsBlockProducer)
-	if config.IsBlockProducer {
+	isBlockProducer := Dependencies.Config.IsBlockProducer
+	log.Println("IsBlockProducer=", isBlockProducer)
+	if isBlockProducer {
 		go core.NewBlockProducer(Dependencies.Mempool, node.BlocksTopic, Dependencies.Chainstore).BuildAndPublishBlock(ctx)
 	}
 
@@ -72,62 +74,10 @@ func initializeGenesisState(app *lib.App) {
 	log.Println("Initialised genesis")
 }
 
-// Extract to separate service
-func onSubscribedToTransactions(ctx context.Context, node *p2p.Node, sub *pubsub.Subscription, wallet *core.Wallet) {
-	messageProcessor := make(chan types.Tx, 1)
-	go consumeTransactionsFromMempool(ctx, sub, messageProcessor)
-	go processMessages(ctx, messageProcessor)
-	messages := make(chan string)
-	go readUserInput(messages)
-	go publishToMpool(ctx, node.TxTopic, wallet, messages)
-}
-
 func onSubscribedToBlocks(ctx context.Context, sub *pubsub.Subscription) {
 	blocksProcessor := make(chan types.Block, 1)
 	go consumeBlocksFromMempool(ctx, sub, blocksProcessor)
 	go processBlocks(ctx, blocksProcessor)
-}
-
-func readUserInput(messages chan<- string) {
-	reader := bufio.NewReader(os.Stdin)
-
-	for {
-		fmt.Print("> ")
-		message, err := reader.ReadString('\n')
-		if err != nil {
-			fmt.Println("Error reading the message:", err)
-		}
-		messages <- message
-	}
-}
-
-func processMessages(ctx context.Context, processor chan types.Tx) {
-	for {
-		select {
-		case tx := <-processor:
-			// Add Tx to mpool
-			Dependencies.Mempool.ValidateAndStorePending(tx)
-		case <-ctx.Done():
-			fmt.Println("processMessages cancelled")
-			return
-		}
-	}
-}
-
-func consumeTransactionsFromMempool(ctx context.Context, sub *pubsub.Subscription, messageProcessor chan<- types.Tx) {
-	for {
-		msg, err := sub.Next(ctx)
-		if err != nil {
-			fmt.Println("Subscription error:", err)
-			return
-		}
-		txJson, err := types.FromJSON(msg.Data)
-		if err != nil {
-			fmt.Println("Error deserializing tx:", err)
-			return
-		}
-		messageProcessor <- *txJson
-	}
 }
 
 func consumeBlocksFromMempool(ctx context.Context, sub *pubsub.Subscription, blocksProcessor chan types.Block) {
@@ -162,26 +112,6 @@ func processBlocks(ctx context.Context, processor chan types.Block) {
 		case <-ctx.Done():
 			fmt.Println("processBlocks cancelled")
 			return
-		}
-	}
-}
-
-func publishToMpool(ctx context.Context, topic *pubsub.Topic, wallet *core.Wallet, userInput <-chan string) {
-	for message := range userInput {
-		tx, err := wallet.SignedTransaction(message)
-		if err != nil {
-			fmt.Println("Error building transaction:", err)
-			return
-		}
-
-		txJson, err := tx.ToJSON()
-		if err != nil {
-			fmt.Println("Serialization error :", err)
-			return
-		}
-
-		if err := topic.Publish(ctx, txJson); err != nil {
-			fmt.Println("Publish error:", err)
 		}
 	}
 }

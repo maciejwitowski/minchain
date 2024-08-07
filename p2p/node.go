@@ -26,7 +26,7 @@ type Node struct {
 	gossipSub *pubsub.PubSub
 }
 
-func InitNode(ctx context.Context, config *lib.Config) (*Node, error) {
+func InitNode(ctx context.Context, config lib.Config) (*Node, error) {
 	options := libp2p.ListenAddrStrings(fmt.Sprintf(addressTemplate, config.ListeningPort))
 	p2pHost, err := libp2p.New(options)
 	if err != nil {

@@ -6,6 +6,7 @@ import (
 	"minchain/core/types"
 )
 
+// TODO Extract interface
 type Wallet struct {
 	privateKey *ecdsa.PrivateKey
 }

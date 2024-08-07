@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"flag"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
+	"log"
 )
 
 type Config struct {
@@ -12,19 +13,19 @@ type Config struct {
 	IsBlockProducer bool
 }
 
-func InitConfig() (*Config, error) {
+func InitConfig() Config {
 	port := flag.Int("port", 0, "wait for incoming connections")
 	isBlockProducer := flag.Bool("block-producer", false, "whether this node is a block producer")
 	flag.Parse()
 
 	privateKey, err := ethcrypto.LoadECDSA(".pk")
 	if err != nil {
-		return nil, err
+		log.Fatal(err)
 	}
 
-	return &Config{
+	return Config{
 		ListeningPort:   *port,
 		IsBlockProducer: *isBlockProducer,
 		PrivateKey:      privateKey,
-	}, nil
+	}
 }

@@ -38,6 +38,10 @@ func (bp *BlockProducer) BuildAndPublishBlock(ctx context.Context) {
 			log.Println("Check if block should be produced")
 			// TODO more advanced selection logic
 			transactions := bp.mempool.ListPendingTransactions()
+			if len(transactions) == 0 {
+				log.Println("Skipping empty block")
+				continue
+			}
 
 			block, err := bp.buildBlock(transactions)
 			if err != nil {

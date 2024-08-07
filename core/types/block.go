@@ -4,20 +4,32 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
+	"math/big"
 )
 
 type Block struct {
-	Header BlockHeader `json:"blockHeader"`
-	Txs    []Tx        `json:"transactions"`
+	Header       BlockHeader `json:"blockHeader"`
+	Transactions []Tx        `json:"transactions"`
 }
 
 type BlockHeader struct {
 	ParentHash      common.Hash `json:"parentHash"`
 	TransactionHash common.Hash `json:"transactionHash"`
+	Number          *big.Int    `json:"number"`
 }
 
-func (blk *Block) ToJson() ([]byte, error) {
-	return json.Marshal(blk)
+func (block *Block) BlockHash() common.Hash {
+	headerBytes, err := json.Marshal(block.Header)
+	if err != nil {
+		return [32]byte{}
+	}
+
+	return common.BytesToHash(crypto.Keccak256(headerBytes))
+}
+
+func (block *Block) ToJson() ([]byte, error) {
+	return json.Marshal(block)
 }
 
 func BlockFromJson(data []byte) (*Block, error) {
@@ -29,8 +41,8 @@ func BlockFromJson(data []byte) (*Block, error) {
 	return &blk, nil
 }
 
-func (blk *Block) PrettyPrint() string {
-	jsonData, err := json.MarshalIndent(blk, "", "  ")
+func (block *Block) PrettyPrint() string {
+	jsonData, err := json.MarshalIndent(block, "", "  ")
 	if err != nil {
 		return fmt.Sprintf("Error pretty printing transaction: %v", err)
 	}

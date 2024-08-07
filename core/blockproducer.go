@@ -62,7 +62,7 @@ func builder(txs []types.Tx) (*types.Block, error) {
 			ParentHash:      parent.Header.ParentHash,
 			TransactionHash: txHash,
 		},
-		Txs: txs,
+		Transactions: txs,
 	}
 	return &block, nil
 }
@@ -70,12 +70,11 @@ func builder(txs []types.Tx) (*types.Block, error) {
 func Hash(txs []types.Tx) (common.Hash, error) {
 	buffer := bytes.Buffer{}
 	for _, tx := range txs {
-		serialized, err := tx.ToJSON()
+		hashBytes, err := tx.HashBytes()
 		if err != nil {
 			return common.Hash{}, err
 		}
-		txHash := crypto.Keccak256(serialized)
-		buffer.Write(txHash)
+		buffer.Write(hashBytes)
 	}
 
 	combinedHash := crypto.Keccak256(buffer.Bytes())

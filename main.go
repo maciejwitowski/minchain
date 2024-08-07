@@ -8,8 +8,10 @@ import (
 	"log"
 	"minchain/core"
 	"minchain/core/types"
+	"minchain/database"
 	"minchain/lib"
 	"minchain/p2p"
+	"minchain/validator"
 	"os"
 	"time"
 )
@@ -27,6 +29,7 @@ func main() {
 	defer cancel()
 
 	mpool := core.InitMempool()
+	db := database.NewMemoryDatabase()
 
 	node, err := p2p.InitNode(ctx, config)
 	wallet := core.NewWallet(config.PrivateKey)
@@ -48,7 +51,7 @@ func main() {
 		fmt.Println("Error subscribing to blocks:", err)
 		return
 	}
-	onSubscribedToBlocks(ctx, blkSubscription, mpool, wallet)
+	onSubscribedToBlocks(ctx, blkSubscription, mpool, db)
 
 	go lib.Monitor(ctx, mpool, 1*time.Second)
 
@@ -70,10 +73,10 @@ func onSubscribedToTransactions(ctx context.Context, node *p2p.Node, sub *pubsub
 	go publishToMpool(ctx, node.TxTopic, wallet, messages)
 }
 
-func onSubscribedToBlocks(ctx context.Context, sub *pubsub.Subscription, mpool *core.Mempool, wallet *core.Wallet) {
+func onSubscribedToBlocks(ctx context.Context, sub *pubsub.Subscription, mpool *core.Mempool, db database.Database) {
 	blocksProcessor := make(chan types.Block, 1)
 	go consumeBlocksFromMempool(ctx, sub, blocksProcessor)
-	go processBlocks(ctx, blocksProcessor, mpool)
+	go processBlocks(ctx, blocksProcessor, mpool, db)
 }
 
 func readUserInput(messages chan<- string) {
@@ -134,19 +137,19 @@ func consumeBlocksFromMempool(ctx context.Context, sub *pubsub.Subscription, blo
 	}
 }
 
-func processBlocks(ctx context.Context, processor chan types.Block, mpool *core.Mempool) {
+func processBlocks(ctx context.Context, processor chan types.Block, mpool *core.Mempool, db database.Database) {
 	for {
 		select {
 		case blk := <-processor:
-			// Add Tx to mpool
-			// TODO
-			/**
-			validate block
-			remove pending (if exist) transactions by tx hash
-			calculate the state (merkle tree of txs)
-			store state in DB
-			*/
-			log.Println("received block: ", blk.PrettyPrint())
+			log.Println("received block: ", blk.BlockHash())
+			blockValidator := validator.NewBlockValidator(db)
+			err := blockValidator.Validate(&blk)
+			if err != nil {
+				log.Println("validator error ", err)
+				continue
+			}
+			db.PutBlock(&blk)
+			mpool.PruneTransactions(blk.Transactions)
 		case <-ctx.Done():
 			fmt.Println("processBlocks cancelled")
 			return

@@ -32,7 +32,7 @@ func (c *Chainstore) GetHead() *types.Block {
 				ParentHash:      common.Hash{},
 				TransactionHash: common.Hash{},
 			},
-			Txs: make([]types.Tx, 0),
+			Transactions: make([]types.Tx, 0),
 		}
 	}
 }

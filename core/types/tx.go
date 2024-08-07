@@ -3,6 +3,8 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 type Tx struct {
@@ -32,4 +34,20 @@ func (t *Tx) PrettyPrint() string {
 		return fmt.Sprintf("Error pretty printing transaction: %v", err)
 	}
 	return string(jsonData)
+}
+
+func (t *Tx) HashBytes() ([]byte, error) {
+	serialized, err := t.ToJSON()
+	if err != nil {
+		return []byte{}, err
+	}
+	return crypto.Keccak256(serialized), nil
+}
+
+func (t *Tx) Hash() (common.Hash, error) {
+	bytes, err := t.HashBytes()
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return common.BytesToHash(bytes), nil
 }

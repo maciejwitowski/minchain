@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
 	crypto "github.com/ethereum/go-ethereum/crypto"
 	"minchain/core/types"
 	"strings"
@@ -9,14 +10,14 @@ import (
 )
 
 type Mempool struct {
-	lock       sync.Mutex
-	pendingTxs []types.Tx
+	lock                sync.Mutex
+	pendingTransactions map[common.Hash]types.Tx
 }
 
 func InitMempool() *Mempool {
 	return &Mempool{
-		lock:       sync.Mutex{},
-		pendingTxs: make([]types.Tx, 0),
+		lock:                sync.Mutex{},
+		pendingTransactions: make(map[common.Hash]types.Tx),
 	}
 }
 
@@ -24,8 +25,14 @@ func (m *Mempool) HandleTransaction(tx types.Tx) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
+	txHash, err := tx.Hash()
+	if err != nil {
+		fmt.Println("error getting tx hash")
+		return
+	}
+
 	if IsValid(tx) {
-		m.pendingTxs = append(m.pendingTxs, tx)
+		m.pendingTransactions[txHash] = tx
 	}
 }
 
@@ -59,11 +66,11 @@ func (m *Mempool) DumpTx() {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	fmt.Printf("Pending transactions (%d)\n", len(m.pendingTxs))
-	for _, tx := range m.pendingTxs {
+	fmt.Printf("Pending transactions (%d)\n", len(m.pendingTransactions))
+	for _, tx := range m.pendingTransactions {
 		fmt.Println(tx.PrettyPrint())
 	}
-	if len(m.pendingTxs) > 0 {
+	if len(m.pendingTransactions) > 0 {
 		fmt.Println("--------")
 	}
 }
@@ -72,27 +79,40 @@ func (m *Mempool) Size() int {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	return len(m.pendingTxs)
+	return len(m.pendingTransactions)
 }
 
 func (m *Mempool) BuildBlockFromTransactions(builder func(txs []types.Tx) (*types.Block, error)) (*types.Block, error) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	if len(m.pendingTxs) == 0 {
+	if len(m.pendingTransactions) == 0 {
 		return nil, nil
 	}
 
-	txCopy := make([]types.Tx, len(m.pendingTxs))
-	copy(txCopy, m.pendingTxs)
+	selectTransactions := make([]types.Tx, len(m.pendingTransactions))
+	for _, tx := range m.pendingTransactions {
+		// TODO more advanced selection logic
+		selectTransactions = append(selectTransactions, tx)
+	}
 
-	block, err := builder(m.pendingTxs)
+	block, err := builder(selectTransactions)
 	if err != nil {
 		return nil, err
 	}
 
 	// Block created successfully. We assume all pending have been handled and can be cleared
-	m.pendingTxs = m.pendingTxs[:0]
+	clear(m.pendingTransactions)
 
 	return block, err
+}
+
+func (m *Mempool) PruneTransactions(transactions []types.Tx) {
+	for _, t := range transactions {
+		hash, err := t.Hash()
+		if err != nil {
+			continue
+		}
+		delete(m.pendingTransactions, hash)
+	}
 }

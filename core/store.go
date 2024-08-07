@@ -6,27 +6,32 @@ import (
 	"sync"
 )
 
-type Chainstore struct {
+type Chainstore interface {
+	SetHead(block *types.Block)
+	GetHead() *types.Block
+}
+
+type MemoryChainstore struct {
 	lock sync.Mutex
 
 	db   database.Database
 	head *types.Block
 }
 
-func NewChainstore(db database.Database) *Chainstore {
-	return &Chainstore{
+func NewChainstore(db database.Database) Chainstore {
+	return &MemoryChainstore{
 		db: db,
 	}
 }
 
-func (c *Chainstore) SetHead(block *types.Block) {
+func (c *MemoryChainstore) SetHead(block *types.Block) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
 	c.head = block
 }
 
-func (c *Chainstore) GetHead() *types.Block {
+func (c *MemoryChainstore) GetHead() *types.Block {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 

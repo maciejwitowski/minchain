@@ -14,12 +14,12 @@ import (
 
 // BlockProducer reads mempool and then produces and publishes a block
 type BlockProducer struct {
-	mempool    *Mempool
+	mempool    Mempool
 	topic      *pubsub.Topic
-	chainstore *Chainstore
+	chainstore Chainstore
 }
 
-func NewBlockProducer(mempool *Mempool, topic *pubsub.Topic, chainstore *Chainstore) *BlockProducer {
+func NewBlockProducer(mempool Mempool, topic *pubsub.Topic, chainstore Chainstore) *BlockProducer {
 	return &BlockProducer{
 		mempool:    mempool,
 		topic:      topic,

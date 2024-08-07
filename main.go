@@ -8,14 +8,14 @@ import (
 	"log"
 	"minchain/core"
 	"minchain/core/types"
-	"minchain/database"
 	"minchain/genesis"
 	"minchain/lib"
 	"minchain/p2p"
-	"minchain/validator"
 	"os"
 	"time"
 )
+
+var Dependencies = lib.InitApplicationDependencies()
 
 func main() {
 	//logging.SetAllLoggers(logging.LevelDebug)
@@ -30,15 +30,7 @@ func main() {
 	defer cancel()
 
 	// TODO Better dependency injection
-	mpool := core.InitMempool()
-	db := database.NewMemoryDatabase()
-	chainstore := core.NewChainstore(db)
-
-	err = genesis.InitializeGenesisState(db, chainstore)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Println("Initialised genesis")
+	initializeGenesisState(Dependencies)
 
 	node, err := p2p.InitNode(ctx, config)
 	wallet := core.NewWallet(config.PrivateKey)
@@ -53,39 +45,47 @@ func main() {
 		fmt.Println("Error subscribing to transactions:", err)
 		return
 	}
-	onSubscribedToTransactions(ctx, node, txSubscription, mpool, wallet)
+	onSubscribedToTransactions(ctx, node, txSubscription, wallet)
 
 	blkSubscription, err := node.SubscribeToBlocks()
 	if err != nil {
 		fmt.Println("Error subscribing to blocks:", err)
 		return
 	}
-	onSubscribedToBlocks(ctx, blkSubscription, mpool, db, chainstore)
+	onSubscribedToBlocks(ctx, blkSubscription)
 
-	go lib.Monitor(ctx, mpool, 1*time.Second)
+	go lib.Monitor(ctx, Dependencies.Mempool, 1*time.Second)
 
 	log.Println("IsBlockProducer=", config.IsBlockProducer)
 	if config.IsBlockProducer {
-		go core.NewBlockProducer(mpool, node.BlocksTopic, chainstore).BuildAndPublishBlock(ctx)
+		go core.NewBlockProducer(Dependencies.Mempool, node.BlocksTopic, Dependencies.Chainstore).BuildAndPublishBlock(ctx)
 	}
 
 	select {}
 }
 
+func initializeGenesisState(app *lib.App) {
+	err := genesis.InitializeGenesisState(app.Database, app.Chainstore)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println("Initialised genesis")
+}
+
 // Extract to separate service
-func onSubscribedToTransactions(ctx context.Context, node *p2p.Node, sub *pubsub.Subscription, mpool *core.Mempool, wallet *core.Wallet) {
+func onSubscribedToTransactions(ctx context.Context, node *p2p.Node, sub *pubsub.Subscription, wallet *core.Wallet) {
 	messageProcessor := make(chan types.Tx, 1)
 	go consumeTransactionsFromMempool(ctx, sub, messageProcessor)
-	go processMessages(ctx, messageProcessor, mpool)
+	go processMessages(ctx, messageProcessor)
 	messages := make(chan string)
 	go readUserInput(messages)
 	go publishToMpool(ctx, node.TxTopic, wallet, messages)
 }
 
-func onSubscribedToBlocks(ctx context.Context, sub *pubsub.Subscription, mpool *core.Mempool, db database.Database, store *core.Chainstore) {
+func onSubscribedToBlocks(ctx context.Context, sub *pubsub.Subscription) {
 	blocksProcessor := make(chan types.Block, 1)
 	go consumeBlocksFromMempool(ctx, sub, blocksProcessor)
-	go processBlocks(ctx, blocksProcessor, mpool, db, store)
+	go processBlocks(ctx, blocksProcessor)
 }
 
 func readUserInput(messages chan<- string) {
@@ -101,12 +101,12 @@ func readUserInput(messages chan<- string) {
 	}
 }
 
-func processMessages(ctx context.Context, processor chan types.Tx, mpool *core.Mempool) {
+func processMessages(ctx context.Context, processor chan types.Tx) {
 	for {
 		select {
 		case tx := <-processor:
 			// Add Tx to mpool
-			mpool.HandleTransaction(tx)
+			Dependencies.Mempool.ValidateAndStorePending(tx)
 		case <-ctx.Done():
 			fmt.Println("processMessages cancelled")
 			return
@@ -146,20 +146,19 @@ func consumeBlocksFromMempool(ctx context.Context, sub *pubsub.Subscription, blo
 	}
 }
 
-func processBlocks(ctx context.Context, processor chan types.Block, mpool *core.Mempool, db database.Database, store *core.Chainstore) {
+func processBlocks(ctx context.Context, processor chan types.Block) {
 	for {
 		select {
 		case blk := <-processor:
 			log.Println("received block: ", blk.BlockHash())
-			blockValidator := validator.NewBlockValidator(db)
-			err := blockValidator.Validate(&blk)
+			err := Dependencies.BlockValidator.Validate(&blk)
 			if err != nil {
 				log.Println("validator error ", err)
 				continue
 			}
-			db.PutBlock(&blk)
-			store.SetHead(&blk)
-			mpool.PruneTransactions(blk.Transactions)
+			Dependencies.Database.PutBlock(&blk)
+			Dependencies.Chainstore.SetHead(&blk)
+			Dependencies.Mempool.PruneTransactions(blk.Transactions)
 		case <-ctx.Done():
 			fmt.Println("processBlocks cancelled")
 			return

@@ -27,7 +27,6 @@ func (v *BlockValidator) Validate(block *types.Block) error {
 		return ErrorKnownBlock
 	}
 
-	// TODO requires genesis setup (adding genesis block to db so the parent case doesn't have to be handled separately
 	foundParent := v.db.GetBlockByHash(block.Header.ParentHash)
 	if foundParent == nil {
 		return ErrorUnknownParent

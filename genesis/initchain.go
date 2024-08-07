@@ -9,7 +9,7 @@ import (
 	"minchain/database"
 )
 
-func InitializeGenesisState(db database.Database, store *core.Chainstore) error {
+func InitializeGenesisState(db database.Database, store core.Chainstore) error {
 	genesisBlock := types.Block{
 		Header: types.BlockHeader{
 			ParentHash:      common.Hash{},

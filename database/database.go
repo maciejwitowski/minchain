@@ -14,7 +14,7 @@ type MemoryDatabase struct {
 	blocks map[common.Hash]*types.Block
 }
 
-func NewMemoryDatabase() *MemoryDatabase {
+func NewMemoryDatabase() Database {
 	return &MemoryDatabase{blocks: make(map[common.Hash]*types.Block)}
 }
 

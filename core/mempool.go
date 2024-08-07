@@ -9,19 +9,25 @@ import (
 	"sync"
 )
 
-type Mempool struct {
+type Mempool interface {
+	ValidateAndStorePending(transations types.Tx)
+	ListPendingTransactions() []types.Tx
+	PruneTransactions(transactions []types.Tx)
+}
+
+type MemoryMempool struct {
 	lock                sync.Mutex
 	pendingTransactions map[common.Hash]types.Tx
 }
 
-func InitMempool() *Mempool {
-	return &Mempool{
+func InitMempool() Mempool {
+	return &MemoryMempool{
 		lock:                sync.Mutex{},
 		pendingTransactions: make(map[common.Hash]types.Tx),
 	}
 }
 
-func (m *Mempool) HandleTransaction(tx types.Tx) {
+func (m *MemoryMempool) ValidateAndStorePending(tx types.Tx) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -62,27 +68,7 @@ func IsValid(tx types.Tx) bool {
 	return true
 }
 
-func (m *Mempool) DumpTx() {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-
-	fmt.Printf("Pending transactions (%d)\n", len(m.pendingTransactions))
-	for _, tx := range m.pendingTransactions {
-		fmt.Println(tx.PrettyPrint())
-	}
-	if len(m.pendingTransactions) > 0 {
-		fmt.Println("--------")
-	}
-}
-
-func (m *Mempool) Size() int {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-
-	return len(m.pendingTransactions)
-}
-
-func (m *Mempool) ListPendingTransactions() []types.Tx {
+func (m *MemoryMempool) ListPendingTransactions() []types.Tx {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -93,7 +79,7 @@ func (m *Mempool) ListPendingTransactions() []types.Tx {
 	return transactions
 }
 
-func (m *Mempool) PruneTransactions(transactions []types.Tx) {
+func (m *MemoryMempool) PruneTransactions(transactions []types.Tx) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 

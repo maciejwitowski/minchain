@@ -3,12 +3,12 @@ package lib
 import (
 	"context"
 	"log"
-	"minchain/chain"
+	"minchain/core"
 	"time"
 )
 
 // Monitor checks every interval period whether mempool size changed and if so, it prints it.
-func Monitor(ctx context.Context, mpool *chain.Mempool, interval time.Duration) {
+func Monitor(ctx context.Context, mpool *core.Mempool, interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 

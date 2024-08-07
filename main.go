@@ -6,7 +6,8 @@ import (
 	"fmt"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"log"
-	"minchain/chain"
+	"minchain/core"
+	"minchain/core/types"
 	"minchain/lib"
 	"minchain/p2p"
 	"os"
@@ -25,10 +26,10 @@ func main() {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	mpool := chain.InitMempool()
+	mpool := core.InitMempool()
 
 	node, err := p2p.InitNode(ctx, config)
-	wallet := chain.NewWallet(config.PrivateKey)
+	wallet := core.NewWallet(config.PrivateKey)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -53,15 +54,15 @@ func main() {
 
 	log.Println("IsBlockProducer=", config.IsBlockProducer)
 	if config.IsBlockProducer {
-		go chain.BlockProducer(ctx, mpool, node.BlocksTopic)
+		go core.BlockProducer(ctx, mpool, node.BlocksTopic)
 	}
 
 	select {}
 }
 
 // Extract to separate service
-func onSubscribedToTransactions(ctx context.Context, node *p2p.Node, sub *pubsub.Subscription, mpool *chain.Mempool, wallet *chain.Wallet) {
-	messageProcessor := make(chan chain.Tx, 1)
+func onSubscribedToTransactions(ctx context.Context, node *p2p.Node, sub *pubsub.Subscription, mpool *core.Mempool, wallet *core.Wallet) {
+	messageProcessor := make(chan types.Tx, 1)
 	go consumeTransactionsFromMempool(ctx, sub, messageProcessor)
 	go processMessages(ctx, messageProcessor, mpool)
 	messages := make(chan string)
@@ -69,8 +70,8 @@ func onSubscribedToTransactions(ctx context.Context, node *p2p.Node, sub *pubsub
 	go publishToMpool(ctx, node.TxTopic, wallet, messages)
 }
 
-func onSubscribedToBlocks(ctx context.Context, sub *pubsub.Subscription, mpool *chain.Mempool, wallet *chain.Wallet) {
-	blocksProcessor := make(chan chain.Block, 1)
+func onSubscribedToBlocks(ctx context.Context, sub *pubsub.Subscription, mpool *core.Mempool, wallet *core.Wallet) {
+	blocksProcessor := make(chan types.Block, 1)
 	go consumeBlocksFromMempool(ctx, sub, blocksProcessor)
 	go processBlocks(ctx, blocksProcessor, mpool)
 }
@@ -88,7 +89,7 @@ func readUserInput(messages chan<- string) {
 	}
 }
 
-func processMessages(ctx context.Context, processor chan chain.Tx, mpool *chain.Mempool) {
+func processMessages(ctx context.Context, processor chan types.Tx, mpool *core.Mempool) {
 	for {
 		select {
 		case tx := <-processor:
@@ -101,14 +102,14 @@ func processMessages(ctx context.Context, processor chan chain.Tx, mpool *chain.
 	}
 }
 
-func consumeTransactionsFromMempool(ctx context.Context, sub *pubsub.Subscription, messageProcessor chan<- chain.Tx) {
+func consumeTransactionsFromMempool(ctx context.Context, sub *pubsub.Subscription, messageProcessor chan<- types.Tx) {
 	for {
 		msg, err := sub.Next(ctx)
 		if err != nil {
 			fmt.Println("Subscription error:", err)
 			return
 		}
-		txJson, err := chain.FromJSON(msg.Data)
+		txJson, err := types.FromJSON(msg.Data)
 		if err != nil {
 			fmt.Println("Error deserializing tx:", err)
 			return
@@ -117,14 +118,14 @@ func consumeTransactionsFromMempool(ctx context.Context, sub *pubsub.Subscriptio
 	}
 }
 
-func consumeBlocksFromMempool(ctx context.Context, sub *pubsub.Subscription, blocksProcessor chan chain.Block) {
+func consumeBlocksFromMempool(ctx context.Context, sub *pubsub.Subscription, blocksProcessor chan types.Block) {
 	for {
 		msg, err := sub.Next(ctx)
 		if err != nil {
 			fmt.Println("Subscription error:", err)
 			return
 		}
-		blkJson, err := chain.BlockFromJson(msg.Data)
+		blkJson, err := types.BlockFromJson(msg.Data)
 		if err != nil {
 			fmt.Println("Error deserializing block:", err)
 			return
@@ -133,11 +134,18 @@ func consumeBlocksFromMempool(ctx context.Context, sub *pubsub.Subscription, blo
 	}
 }
 
-func processBlocks(ctx context.Context, processor chan chain.Block, mpool *chain.Mempool) {
+func processBlocks(ctx context.Context, processor chan types.Block, mpool *core.Mempool) {
 	for {
 		select {
 		case blk := <-processor:
 			// Add Tx to mpool
+			// TODO
+			/**
+			validate block
+			remove pending (if exist) transactions by tx hash
+			calculate the state (merkle tree of txs)
+			store state in DB
+			*/
 			log.Println("received block: ", blk.PrettyPrint())
 		case <-ctx.Done():
 			fmt.Println("processBlocks cancelled")
@@ -146,7 +154,7 @@ func processBlocks(ctx context.Context, processor chan chain.Block, mpool *chain
 	}
 }
 
-func publishToMpool(ctx context.Context, topic *pubsub.Topic, wallet *chain.Wallet, userInput <-chan string) {
+func publishToMpool(ctx context.Context, topic *pubsub.Topic, wallet *core.Wallet, userInput <-chan string) {
 	for message := range userInput {
 		tx, err := wallet.SignedTransaction(message)
 		if err != nil {

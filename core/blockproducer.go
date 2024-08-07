@@ -1,4 +1,4 @@
-package chain
+package core
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"log"
+	"minchain/core/types"
 	"time"
 )
 
@@ -45,10 +46,10 @@ func BlockProducer(ctx context.Context, mempool *Mempool, topic *pubsub.Topic) {
 }
 
 type BlockBuilder interface {
-	buildBlock([]Tx) (*Block, error)
+	buildBlock([]types.Tx) (*types.Block, error)
 }
 
-func builder(txs []Tx) (*Block, error) {
+func builder(txs []types.Tx) (*types.Block, error) {
 	txHash, err := Hash(txs)
 	if err != nil {
 		fmt.Println("Block production failed. Skipping") // TODO error handling
@@ -56,8 +57,8 @@ func builder(txs []Tx) (*Block, error) {
 	}
 
 	parent := ChainstoreInstance.GetHead()
-	block := Block{
-		Header: BlockHeader{
+	block := types.Block{
+		Header: types.BlockHeader{
 			ParentHash:      parent.Header.ParentHash,
 			TransactionHash: txHash,
 		},
@@ -66,7 +67,7 @@ func builder(txs []Tx) (*Block, error) {
 	return &block, nil
 }
 
-func Hash(txs []Tx) (common.Hash, error) {
+func Hash(txs []types.Tx) (common.Hash, error) {
 	buffer := bytes.Buffer{}
 	for _, tx := range txs {
 		serialized, err := tx.ToJSON()

@@ -1,25 +1,26 @@
-package chain
+package core
 
 import (
 	"fmt"
 	crypto "github.com/ethereum/go-ethereum/crypto"
+	"minchain/core/types"
 	"strings"
 	"sync"
 )
 
 type Mempool struct {
 	lock       sync.Mutex
-	pendingTxs []Tx
+	pendingTxs []types.Tx
 }
 
 func InitMempool() *Mempool {
 	return &Mempool{
 		lock:       sync.Mutex{},
-		pendingTxs: make([]Tx, 0),
+		pendingTxs: make([]types.Tx, 0),
 	}
 }
 
-func (m *Mempool) HandleTransaction(tx Tx) {
+func (m *Mempool) HandleTransaction(tx types.Tx) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -28,7 +29,7 @@ func (m *Mempool) HandleTransaction(tx Tx) {
 	}
 }
 
-func IsValid(tx Tx) bool {
+func IsValid(tx types.Tx) bool {
 	if len(strings.TrimSpace(tx.Data)) == 0 {
 		return false
 	}
@@ -74,7 +75,7 @@ func (m *Mempool) Size() int {
 	return len(m.pendingTxs)
 }
 
-func (m *Mempool) BuildBlockFromTransactions(builder func(txs []Tx) (*Block, error)) (*Block, error) {
+func (m *Mempool) BuildBlockFromTransactions(builder func(txs []types.Tx) (*types.Block, error)) (*types.Block, error) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -82,7 +83,7 @@ func (m *Mempool) BuildBlockFromTransactions(builder func(txs []Tx) (*Block, err
 		return nil, nil
 	}
 
-	txCopy := make([]Tx, len(m.pendingTxs))
+	txCopy := make([]types.Tx, len(m.pendingTxs))
 	copy(txCopy, m.pendingTxs)
 
 	block, err := builder(m.pendingTxs)

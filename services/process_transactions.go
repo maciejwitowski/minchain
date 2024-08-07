@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"fmt"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"minchain/core"
 	"minchain/core/types"
@@ -35,12 +34,12 @@ func (p *ProcessTransactions) consumeTransactionsFromMempool(ctx context.Context
 	for {
 		msg, err := sub.Next(ctx)
 		if err != nil {
-			fmt.Println("Subscription error:", err)
+			log.Println("Subscription error:", err)
 			return
 		}
 		txJson, err := types.FromJSON(msg.Data)
 		if err != nil {
-			fmt.Println("Error deserializing tx:", err)
+			log.Println("Error deserializing tx:", err)
 			return
 		}
 		messageProcessor <- *txJson
@@ -54,7 +53,7 @@ func (p *ProcessTransactions) processMessages(ctx context.Context, processor cha
 			// Add Tx to mpool
 			p.mempool.ValidateAndStorePending(tx)
 		case <-ctx.Done():
-			fmt.Println("processMessages cancelled")
+			log.Println("processMessages cancelled")
 			return
 		}
 	}
@@ -64,18 +63,18 @@ func (p *ProcessTransactions) publishToMpool(ctx context.Context) {
 	for message := range p.userInput {
 		tx, err := p.wallet.SignedTransaction(message)
 		if err != nil {
-			fmt.Println("Error building transaction:", err)
+			log.Println("Error building transaction:", err)
 			return
 		}
 
 		txJson, err := tx.ToJSON()
 		if err != nil {
-			fmt.Println("Serialization error :", err)
+			log.Println("Serialization error :", err)
 			return
 		}
 
 		if err := p.pubSubTopic.Publish(ctx, txJson); err != nil {
-			fmt.Println("Publish error:", err)
+			log.Println("Publish error:", err)
 		}
 	}
 }

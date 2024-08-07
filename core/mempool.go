@@ -1,7 +1,6 @@
 package core
 
 import (
-	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	crypto "github.com/ethereum/go-ethereum/crypto"
 	"minchain/core/types"
@@ -33,7 +32,7 @@ func (m *MemoryMempool) ValidateAndStorePending(tx types.Tx) {
 
 	txHash, err := tx.Hash()
 	if err != nil {
-		fmt.Println("error getting tx hash")
+		log.Println("error getting tx hash")
 		return
 	}
 
@@ -48,14 +47,14 @@ func IsValid(tx types.Tx) bool {
 	}
 
 	if len(tx.Signature) != 65 {
-		fmt.Println("Invalid signature length")
+		log.Println("Invalid signature length")
 		return false
 	}
 
 	digest := crypto.Keccak256([]byte(tx.Data))
 	publicKey, err := crypto.Ecrecover(digest, tx.Signature)
 	if err != nil {
-		fmt.Println("publicKey error")
+		log.Println("publicKey error")
 		return false
 	}
 

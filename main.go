@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"log"
 	"minchain/core"
@@ -31,13 +30,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Println(node.String())
+	log.Println(node.String())
 
 	launchTransactionsProcessing(ctx, node)
 
 	blkSubscription, err := node.SubscribeToBlocks()
 	if err != nil {
-		fmt.Println("Error subscribing to blocks:", err)
+		log.Println("Error subscribing to blocks:", err)
 		return
 	}
 	onSubscribedToBlocks(ctx, blkSubscription)
@@ -64,7 +63,7 @@ func initializeGenesisState(app *lib.App) {
 func launchTransactionsProcessing(ctx context.Context, node *p2p.Node) {
 	txSubscription, err := node.SubscribeToTransactions()
 	if err != nil {
-		fmt.Println("Error subscribing to transactions:", err)
+		log.Println("Error subscribing to transactions:", err)
 		return
 	}
 
@@ -87,12 +86,12 @@ func consumeBlocksFromMempool(ctx context.Context, sub *pubsub.Subscription, blo
 	for {
 		msg, err := sub.Next(ctx)
 		if err != nil {
-			fmt.Println("Subscription error:", err)
+			log.Println("Subscription error:", err)
 			return
 		}
 		blkJson, err := types.BlockFromJson(msg.Data)
 		if err != nil {
-			fmt.Println("Error deserializing block:", err)
+			log.Println("Error deserializing block:", err)
 			return
 		}
 		blocksProcessor <- *blkJson
@@ -113,7 +112,7 @@ func processBlocks(ctx context.Context, processor chan types.Block) {
 			Dependencies.Chainstore.SetHead(&blk)
 			Dependencies.Mempool.PruneTransactions(blk.Transactions)
 		case <-ctx.Done():
-			fmt.Println("processBlocks cancelled")
+			log.Println("processBlocks cancelled")
 			return
 		}
 	}

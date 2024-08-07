@@ -3,7 +3,6 @@ package core
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -54,12 +53,12 @@ func (bp *BlockProducer) BuildAndPublishBlock(ctx context.Context) {
 
 				blkJson, err := block.ToJson()
 				if err != nil {
-					fmt.Println("Serialization error :", err)
+					log.Println("Serialization error :", err)
 					continue
 				}
 
 				if err := bp.topic.Publish(ctx, blkJson); err != nil {
-					fmt.Println("Publish error:", err)
+					log.Println("Publish error:", err)
 				}
 
 				bp.mempool.PruneTransactions(block.Transactions)
@@ -75,7 +74,7 @@ type BlockBuilder interface {
 func (bp *BlockProducer) buildBlock(txs []types.Tx) (*types.Block, error) {
 	txHash, err := Hash(txs)
 	if err != nil {
-		fmt.Println("Block production failed. Skipping") // TODO error handling
+		log.Println("Block production failed. Skipping") // TODO error handling
 		return nil, err
 	}
 

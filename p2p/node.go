@@ -2,7 +2,6 @@ package p2p
 
 import (
 	"context"
-	"fmt"
 	"github.com/libp2p/go-libp2p"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -27,7 +26,7 @@ type Node struct {
 }
 
 func InitNode(ctx context.Context, config lib.Config) (*Node, error) {
-	options := libp2p.ListenAddrStrings(fmt.Sprintf(addressTemplate, config.ListeningPort))
+	options := libp2p.ListenAddrStrings(log.Sprintf(addressTemplate, config.ListeningPort))
 	p2pHost, err := libp2p.New(options)
 	if err != nil {
 		return nil, err
@@ -58,10 +57,10 @@ type discoveryNotifee struct {
 }
 
 func (n *discoveryNotifee) HandlePeerFound(pi peer.AddrInfo) {
-	fmt.Printf("Discovered new peer %s\n", pi.ID.String())
+	log.Printf("Discovered new peer %s\n", pi.ID.String())
 	err := n.h.Connect(n.ctx, pi)
 	if err != nil {
-		fmt.Printf("Error connecting to peer %s: %s\n", pi.ID.String(), err)
+		log.Printf("Error connecting to peer %s: %s\n", pi.ID.String(), err)
 		return
 	}
 }
@@ -71,7 +70,7 @@ func (n *Node) String() string {
 	sb.WriteString("Host ID:" + n.p2pHost.ID().String())
 	sb.WriteString("\nHost Addresses:")
 	for _, addr := range n.p2pHost.Addrs() {
-		sb.WriteString(fmt.Sprintf("  %s/p2p/%s\n", addr, n.p2pHost.ID()))
+		sb.WriteString(log.Sprintf("  %s/p2p/%s\n", addr, n.p2pHost.ID()))
 	}
 	return sb.String()
 }

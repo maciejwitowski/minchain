@@ -3,7 +3,6 @@ package lib
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"log"
 	"os"
 )
@@ -20,10 +19,10 @@ func UserInput(ctx context.Context) <-chan string {
 			case <-ctx.Done():
 				log.Println("context cancelled")
 			default:
-				fmt.Print("> ")
+				log.Print("> ")
 				message, err := reader.ReadString('\n')
 				if err != nil {
-					fmt.Println("Error reading the message:", err)
+					log.Println("Error reading the message:", err)
 				}
 				messages <- message
 			}

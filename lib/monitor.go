@@ -2,7 +2,6 @@ package lib
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"minchain/core"
 	"time"
@@ -19,12 +18,12 @@ func Monitor(ctx context.Context, mpool core.Mempool, interval time.Duration) {
 		case <-ticker.C:
 			pendingTransactions := mpool.ListPendingTransactions()
 			if len(pendingTransactions) != previousMpoolSize {
-				fmt.Printf("Pending transactions (%d)\n", len(pendingTransactions))
+				log.Printf("Pending transactions (%d)\n", len(pendingTransactions))
 				for _, tx := range mpool.ListPendingTransactions() {
-					fmt.Println(tx.PrettyPrint())
+					log.Println(tx.PrettyPrint())
 				}
 				if len(pendingTransactions) > 0 {
-					fmt.Println("--------")
+					log.Println("--------")
 				}
 				previousMpoolSize = len(pendingTransactions)
 			}

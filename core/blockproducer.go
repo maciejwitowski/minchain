@@ -36,7 +36,7 @@ func (bp *BlockProducer) BuildAndPublishBlock(ctx context.Context) {
 		case <-blocktimeTicker.C:
 			// TODO more advanced selection logic
 			transactions := bp.mempool.ListPendingTransactions()
-			log.Println("Building block. Tx count:", len(transactions))
+			log.Println("Before publishing a block. Transactions cound:", len(transactions))
 			if len(transactions) == 0 {
 				continue
 			}
@@ -49,7 +49,7 @@ func (bp *BlockProducer) BuildAndPublishBlock(ctx context.Context) {
 			}
 
 			if block != nil {
-				log.Println("Produced block: ", block.BlockHash())
+				log.Println("Produced block: ", block.PrettyPrint())
 				if err := bp.p2pPublisher.PublishBlock(ctx, block); err != nil {
 					log.Println("Publish error:", err)
 				}

@@ -6,8 +6,9 @@ import (
 )
 
 type Database interface {
-	PutBlock(block *types.Block)
-	GetBlockByHash(hash common.Hash) *types.Block
+	PutBlock(block *types.Block) error
+	GetBlockByHash(hash common.Hash) (*types.Block, error)
+	Close() error
 }
 
 type MemoryDatabase struct {
@@ -18,11 +19,16 @@ func NewMemoryDatabase() Database {
 	return &MemoryDatabase{blocks: make(map[common.Hash]*types.Block)}
 }
 
-func (db *MemoryDatabase) PutBlock(block *types.Block) {
+func (db *MemoryDatabase) PutBlock(block *types.Block) error {
 	db.blocks[block.BlockHash()] = block
+	return nil
 }
 
-func (db *MemoryDatabase) GetBlockByHash(hash common.Hash) *types.Block {
+func (db *MemoryDatabase) GetBlockByHash(hash common.Hash) (*types.Block, error) {
 	block := db.blocks[hash]
-	return block
+	return block, nil
+}
+
+func (db *MemoryDatabase) Close() error {
+	return nil // no op
 }

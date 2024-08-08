@@ -45,7 +45,12 @@ func (p *ProcessBlocks) Start(ctx context.Context) {
 					continue
 				}
 
-				p.database.PutBlock(block)
+				log.Println("Valid block becomes new head", block.BlockHash().Hex())
+				err = p.database.PutBlock(block)
+				if err != nil {
+					log.Println("Validator.PutBlock ", err)
+				}
+
 				p.chainstore.SetHead(block)
 				p.mempool.PruneTransactions(block.Transactions)
 			}

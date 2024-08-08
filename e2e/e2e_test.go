@@ -76,7 +76,8 @@ func TestE2E(t *testing.T) {
 
 	waitForPropagation()
 
-	require.Equal(t, publishedBlock.BlockHash(), db.GetBlockByHash(publishedBlock.BlockHash()).BlockHash())
+	blockStoredInDb, _ := db.GetBlockByHash(publishedBlock.BlockHash())
+	require.Equal(t, publishedBlock.BlockHash(), blockStoredInDb.BlockHash())
 	require.Equal(t, publishedBlock.BlockHash(), chainstore.GetHead().BlockHash())
 	require.Equal(t, 0, len(mempool.ListPendingTransactions()))
 }

@@ -37,7 +37,11 @@ func (c *MemoryChainstore) GetHead() *types.Block {
 
 	if c.head == nil {
 		// Assumes genesis block has been initialised and exists in DB
-		c.db.GetBlockByHash(GenesisBlockHash)
+		genesisBlock, err := c.db.GetBlockByHash(GenesisBlockHash)
+		if err != nil {
+			return nil
+		}
+		c.head = genesisBlock
 	}
 
 	return c.head

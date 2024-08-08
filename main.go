@@ -18,6 +18,19 @@ func main() {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	var db database.Database
+	db, err := database.NewDiskDatabase()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer func(db database.Database) {
+		err := db.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}(db)
+
 	config := lib.InitConfig()
 	node, err := p2p.InitNode(ctx, config)
 	if err != nil {
@@ -28,8 +41,6 @@ func main() {
 
 	mempool := core.NewMempool()
 	go monitor.Monitor(ctx, mempool, 1*time.Second)
-
-	db := database.NewMemoryDatabase()
 
 	application := app.NewApp(
 		mempool,

@@ -2,7 +2,9 @@ package validator
 
 import (
 	"fmt"
+	"github.com/dgraph-io/badger/v4"
 	"github.com/pkg/errors"
+	"log"
 	"minchain/core/types"
 	"minchain/database"
 )
@@ -22,13 +24,22 @@ func NewBlockValidator(db database.Database) *BlockValidator {
 }
 
 func (v *BlockValidator) Validate(block *types.Block) error {
+	log.Println("Validating block", block.BlockHash().Hex())
 	blockHash := block.BlockHash()
-	foundBlock := v.db.GetBlockByHash(blockHash)
+	foundBlock, err := v.db.GetBlockByHash(blockHash)
+	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
+		return err
+	}
+
 	if foundBlock != nil {
 		return errors.Wrap(ErrorKnownBlock, fmt.Sprintf("Block hash %s", blockHash.Hex()))
 	}
 
-	foundParent := v.db.GetBlockByHash(block.Header.ParentHash)
+	foundParent, err := v.db.GetBlockByHash(block.Header.ParentHash)
+	if err != nil {
+		return err
+	}
+
 	if foundParent == nil {
 		return ErrorUnknownParent
 	}

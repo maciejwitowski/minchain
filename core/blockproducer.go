@@ -8,6 +8,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"log"
 	"minchain/core/types"
+	"minchain/lib"
 	"time"
 )
 
@@ -16,24 +17,26 @@ type BlockProducer struct {
 	mempool    Mempool
 	topic      *pubsub.Topic
 	chainstore Chainstore
+	config     lib.Config
 }
 
-func NewBlockProducer(mempool Mempool, topic *pubsub.Topic, chainstore Chainstore) *BlockProducer {
+func NewBlockProducer(mempool Mempool, topic *pubsub.Topic, chainstore Chainstore, config lib.Config) *BlockProducer {
 	return &BlockProducer{
 		mempool:    mempool,
 		topic:      topic,
 		chainstore: chainstore,
+		config:     config,
 	}
 }
 
 // TODO Split block production and publishing
 func (bp *BlockProducer) BuildAndPublishBlock(ctx context.Context) {
-	blocktime := time.NewTicker(5 * time.Second)
-	defer blocktime.Stop()
+	blocktimeTicker := time.NewTicker(bp.config.BlockTime * time.Second)
+	defer blocktimeTicker.Stop()
 
 	for {
 		select {
-		case <-blocktime.C:
+		case <-blocktimeTicker.C:
 			// TODO more advanced selection logic
 			transactions := bp.mempool.ListPendingTransactions()
 			if len(transactions) == 0 {

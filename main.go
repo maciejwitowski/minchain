@@ -38,7 +38,7 @@ func main() {
 	go lib.Monitor(ctx, Dependencies.Mempool, 1*time.Second)
 
 	if Dependencies.Config.IsBlockProducer {
-		go core.NewBlockProducer(Dependencies.Mempool, node.BlocksTopic, Dependencies.Chainstore).BuildAndPublishBlock(ctx)
+		go core.NewBlockProducer(Dependencies.Mempool, node.BlocksTopic, Dependencies.Chainstore, Dependencies.Config).BuildAndPublishBlock(ctx)
 	}
 
 	select {}

@@ -28,7 +28,7 @@ func NewBlockProducer(mempool Mempool, p2pPublisher p2p.Publisher, chainstore Ch
 
 // TODO Split block production and publishing
 func (bp *BlockProducer) BuildAndPublishBlock(ctx context.Context) {
-	blocktimeTicker := time.NewTicker(bp.config.BlockTime * time.Second)
+	blocktimeTicker := time.NewTicker(bp.config.BlockTime)
 	defer blocktimeTicker.Stop()
 
 	for {
@@ -47,7 +47,7 @@ func (bp *BlockProducer) BuildAndPublishBlock(ctx context.Context) {
 			}
 
 			if block != nil {
-				log.Println("Produced block: ", block.PrettyPrint())
+				log.Println("Produced block: ", block.BlockHash())
 				if err := bp.p2pPublisher.PublishBlock(ctx, block); err != nil {
 					log.Println("Publish error:", err)
 				}

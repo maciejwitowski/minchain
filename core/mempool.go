@@ -20,7 +20,7 @@ type MemoryMempool struct {
 	pendingTransactions map[common.Hash]*types.Tx
 }
 
-func InitMempool() Mempool {
+func NewMempool() Mempool {
 	return &MemoryMempool{
 		lock:                sync.Mutex{},
 		pendingTransactions: make(map[common.Hash]*types.Tx),

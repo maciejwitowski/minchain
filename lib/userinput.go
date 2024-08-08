@@ -39,7 +39,11 @@ func (ui *UserInput) InputChannel(ctx context.Context) <-chan string {
 				if err != nil {
 					fmt.Println("Error reading the message:", err)
 				}
-				messages <- strings.TrimSuffix(message, "\n")
+				message = strings.TrimSuffix(message, "\n")
+				if message == "" {
+					continue
+				}
+				messages <- message
 			}
 		}
 	}()

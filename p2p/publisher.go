@@ -3,6 +3,7 @@ package p2p
 import (
 	"context"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"log"
 	"minchain/core/types"
 )
 
@@ -24,6 +25,7 @@ func NewP2pPublisher(txTopic *pubsub.Topic, blocksTopic *pubsub.Topic) Publisher
 }
 
 func (p *P2pPublisher) PublishBlock(ctx context.Context, block *types.Block) error {
+	log.Println("Publisher.PublishBlock:", block.BlockHash())
 	json, err := block.ToJson()
 	if err != nil {
 		return err
@@ -33,10 +35,13 @@ func (p *P2pPublisher) PublishBlock(ctx context.Context, block *types.Block) err
 }
 
 func (p *P2pPublisher) PublishTransaction(ctx context.Context, transaction *types.Tx) error {
+	hash, _ := transaction.Hash()
+	log.Println("Publisher.PublishTransaction:", hash)
+
 	json, err := transaction.ToJson()
 	if err != nil {
 		return err
 	}
 
-	return p.blocksTopic.Publish(ctx, json)
+	return p.txTopic.Publish(ctx, json)
 }

@@ -1,6 +1,8 @@
 package validator
 
 import (
+	"fmt"
+	"github.com/pkg/errors"
 	"minchain/core/types"
 	"minchain/database"
 )
@@ -23,7 +25,7 @@ func (v *BlockValidator) Validate(block *types.Block) error {
 	blockHash := block.BlockHash()
 	foundBlock := v.db.GetBlockByHash(blockHash)
 	if foundBlock != nil {
-		return ErrorKnownBlock
+		return errors.Wrap(ErrorKnownBlock, fmt.Sprintf("Block hash %s", blockHash.Hex()))
 	}
 
 	foundParent := v.db.GetBlockByHash(block.Header.ParentHash)

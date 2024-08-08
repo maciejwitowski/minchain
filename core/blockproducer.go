@@ -36,11 +36,13 @@ func (bp *BlockProducer) BuildAndPublishBlock(ctx context.Context) {
 		case <-blocktimeTicker.C:
 			// TODO more advanced selection logic
 			transactions := bp.mempool.ListPendingTransactions()
+			log.Println("Building block. Tx count:", len(transactions))
 			if len(transactions) == 0 {
 				continue
 			}
 
 			block, err := bp.buildBlock(transactions)
+			log.Println("Building block. Block hash:", block.BlockHash())
 			if err != nil {
 				log.Println("error building the block")
 				continue

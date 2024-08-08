@@ -36,7 +36,6 @@ func (p *ProcessBlocks) Start(ctx context.Context) {
 				return
 			default:
 				block, err := p.consumer.ConsumeBlock(ctx)
-				log.Println("Received block from network: ", block.BlockHash())
 				if err != nil {
 					return
 				}

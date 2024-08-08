@@ -22,9 +22,6 @@ func Monitor(ctx context.Context, mpool core.Mempool, interval time.Duration) {
 				for _, tx := range mpool.ListPendingTransactions() {
 					log.Println(tx.PrettyPrint())
 				}
-				if len(pendingTransactions) > 0 {
-					log.Println("--------")
-				}
 				previousMpoolSize = len(pendingTransactions)
 			}
 		case <-ctx.Done():

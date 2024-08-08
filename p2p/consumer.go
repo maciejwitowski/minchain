@@ -31,6 +31,10 @@ func (c *P2pConsumer) ConsumeTransaction(ctx context.Context) (*types.Tx, error)
 	}
 
 	tx, err := types.TransactionFromJSON(msg.Data)
+
+	hash, _ := tx.Hash()
+	log.Println("Consumer.ConsumeTransaction:", hash.Hex())
+
 	if err != nil {
 		log.Println("Error deserializing transaction:", err)
 		return nil, err
@@ -44,10 +48,14 @@ func (c *P2pConsumer) ConsumeBlock(ctx context.Context) (*types.Block, error) {
 		return nil, err
 	}
 
-	tx, err := types.BlockFromJson(msg.Data)
+	block, err := types.BlockFromJson(msg.Data)
+
+	log.Println("Consumer.ConsumeBlock:", block.BlockHash().Hex())
+
 	if err != nil {
 		log.Println("Error deserializing block:", err)
 		return nil, err
 	}
-	return tx, nil
+
+	return block, nil
 }

@@ -2,10 +2,8 @@ package main
 
 import (
 	"context"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"log"
 	"minchain/core"
-	"minchain/core/types"
 	"minchain/genesis"
 	"minchain/lib"
 	"minchain/monitor"
@@ -84,46 +82,4 @@ func launchBlocksProcessing(ctx context.Context, node *p2p.Node) {
 		Dependencies.Mempool,
 	)
 	blocksProcessing.Start(ctx, blockSubscription)
-}
-
-func onSubscribedToBlocks(ctx context.Context, sub *pubsub.Subscription) {
-	blocksProcessor := make(chan types.Block, 1)
-	go consumeBlocksFromMempool(ctx, sub, blocksProcessor)
-	go processBlocks(ctx, blocksProcessor)
-}
-
-func consumeBlocksFromMempool(ctx context.Context, sub *pubsub.Subscription, blocksProcessor chan types.Block) {
-	for {
-		msg, err := sub.Next(ctx)
-		if err != nil {
-			log.Println("Subscription error:", err)
-			return
-		}
-		blkJson, err := types.BlockFromJson(msg.Data)
-		if err != nil {
-			log.Println("Error deserializing block:", err)
-			return
-		}
-		blocksProcessor <- *blkJson
-	}
-}
-
-func processBlocks(ctx context.Context, processor chan types.Block) {
-	for {
-		select {
-		case blk := <-processor:
-			log.Println("received block: ", blk.BlockHash())
-			err := Dependencies.BlockValidator.Validate(&blk)
-			if err != nil {
-				log.Println("validator error ", err)
-				continue
-			}
-			Dependencies.Database.PutBlock(&blk)
-			Dependencies.Chainstore.SetHead(&blk)
-			Dependencies.Mempool.PruneTransactions(blk.Transactions)
-		case <-ctx.Done():
-			log.Println("processBlocks cancelled")
-			return
-		}
-	}
 }

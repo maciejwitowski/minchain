@@ -2,31 +2,32 @@ package services
 
 import (
 	"context"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"log"
 	"minchain/core"
-	"minchain/core/types"
+	"minchain/p2p"
 )
 
 type ProcessTransactions struct {
-	mempool     core.Mempool
-	wallet      *core.Wallet
-	pubSubTopic *pubsub.Topic
-	userInput   <-chan string
+	mempool   core.Mempool
+	wallet    *core.Wallet
+	publisher p2p.Publisher
+	consumer  p2p.Consumer
+	userInput <-chan string
 }
 
-func NewProcessTransactionsService(mempool core.Mempool, wallet *core.Wallet, userInput <-chan string, pubSubTopic *pubsub.Topic) *ProcessTransactions {
+func NewProcessTransactionsService(mempool core.Mempool, wallet *core.Wallet, publisher p2p.Publisher, consumer p2p.Consumer, userInput <-chan string) *ProcessTransactions {
 	return &ProcessTransactions{
-		wallet:      wallet,
-		mempool:     mempool,
-		userInput:   userInput,
-		pubSubTopic: pubSubTopic,
+		wallet:    wallet,
+		mempool:   mempool,
+		publisher: publisher,
+		consumer:  consumer,
+		userInput: userInput,
 	}
 }
 
-func (p *ProcessTransactions) Start(ctx context.Context, sub *pubsub.Subscription) {
+func (p *ProcessTransactions) Start(ctx context.Context) {
 	go p.publishInputToMempool(ctx)
-	go p.processMempoolTransactions(ctx, sub)
+	go p.processMempoolTransactions(ctx)
 }
 
 func (p *ProcessTransactions) publishInputToMempool(ctx context.Context) {
@@ -38,27 +39,16 @@ func (p *ProcessTransactions) publishInputToMempool(ctx context.Context) {
 			return
 		}
 
-		txJson, err := tx.ToJSON()
-		if err != nil {
-			log.Println("Serialization error :", err)
-			return
-		}
-
 		log.Println("Publishing: ", tx.PrettyPrint())
-		if err := p.pubSubTopic.Publish(ctx, txJson); err != nil {
+		if err := p.publisher.PublishTransaction(ctx, tx); err != nil {
 			log.Println("Publish error:", err)
 		}
 	}
 }
 
-func (p *ProcessTransactions) processMempoolTransactions(ctx context.Context, sub *pubsub.Subscription) {
+func (p *ProcessTransactions) processMempoolTransactions(ctx context.Context) {
 	for {
-		msg, err := sub.Next(ctx)
-		if err != nil {
-			log.Println("Subscription error:", err)
-			return
-		}
-		tx, err := types.FromJSON(msg.Data)
+		tx, err := p.consumer.ConsumeTransaction(ctx)
 		if err != nil {
 			log.Println("Error deserializing tx:", err)
 			return

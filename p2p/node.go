@@ -20,8 +20,8 @@ var blocksTopic = "blocks"
 const DiscoveryServiceTag = "p2p-service"
 
 type Node struct {
-	TxTopic     *pubsub.Topic
-	BlocksTopic *pubsub.Topic
+	Publisher Publisher
+	Consumer  Consumer
 
 	p2pHost   host.Host
 	gossipSub *pubsub.PubSub
@@ -47,7 +47,11 @@ func InitNode(ctx context.Context, config lib.Config) (*Node, error) {
 	s := mdns.NewMdnsService(node.p2pHost, DiscoveryServiceTag, &discoveryNotifee{ctx: ctx, h: p2pHost})
 
 	if err := s.Start(); err != nil {
-		panic(err)
+		return nil, err
+	}
+
+	if err := node.initPublisher(); err != nil {
+		return nil, err
 	}
 
 	return node, nil
@@ -77,22 +81,29 @@ func (n *Node) String() string {
 	return sb.String()
 }
 
-func (n *Node) SubscribeToTransactions() (*pubsub.Subscription, error) {
-	subscription, topic, err := n.subscribeToTopic(transactionsTopic)
-	if err != nil {
-		return nil, err
-	}
-	n.TxTopic = topic
-	return subscription, nil
+func (n *Node) Hostname() string {
+	return n.p2pHost.ID().String()
 }
 
-func (n *Node) SubscribeToBlocks() (*pubsub.Subscription, error) {
-	subscription, topic, err := n.subscribeToTopic(blocksTopic)
-	if err != nil {
-		return nil, err
+// Ensures subscription to transactions and blocks and returns a publisher
+func (n *Node) initPublisher() error {
+	if n.Publisher != nil {
+		return nil
 	}
-	n.BlocksTopic = topic
-	return subscription, nil
+
+	txSubscription, txTopic, err := n.subscribeToTopic(transactionsTopic)
+	if err != nil {
+		return err
+	}
+
+	blocksSubscription, blocksTopic, err := n.subscribeToTopic(blocksTopic)
+	if err != nil {
+		return err
+	}
+
+	n.Publisher = NewP2pPublisher(txTopic, blocksTopic)
+	n.Consumer = NewP2pConsumer(txSubscription, blocksSubscription)
+	return nil
 }
 
 func (n *Node) subscribeToTopic(topic string) (*pubsub.Subscription, *pubsub.Topic, error) {
@@ -107,8 +118,4 @@ func (n *Node) subscribeToTopic(topic string) (*pubsub.Subscription, *pubsub.Top
 	}
 
 	return subscription, joinedTopic, nil
-}
-
-func (n *Node) Hostname() string {
-	return n.p2pHost.ID().String()
 }

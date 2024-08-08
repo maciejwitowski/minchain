@@ -5,27 +5,27 @@ import (
 	"context"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"log"
 	"minchain/core/types"
 	"minchain/lib"
+	"minchain/p2p"
 	"time"
 )
 
 // BlockProducer reads mempool and then produces and publishes a block
 type BlockProducer struct {
-	mempool    Mempool
-	topic      *pubsub.Topic
-	chainstore Chainstore
-	config     lib.Config
+	mempool      Mempool
+	chainstore   Chainstore
+	config       lib.Config
+	p2pPublisher p2p.Publisher
 }
 
-func NewBlockProducer(mempool Mempool, topic *pubsub.Topic, chainstore Chainstore, config lib.Config) *BlockProducer {
+func NewBlockProducer(mempool Mempool, p2pPublisher p2p.Publisher, chainstore Chainstore, config lib.Config) *BlockProducer {
 	return &BlockProducer{
-		mempool:    mempool,
-		topic:      topic,
-		chainstore: chainstore,
-		config:     config,
+		mempool:      mempool,
+		p2pPublisher: p2pPublisher,
+		chainstore:   chainstore,
+		config:       config,
 	}
 }
 
@@ -51,14 +51,7 @@ func (bp *BlockProducer) BuildAndPublishBlock(ctx context.Context) {
 
 			if block != nil {
 				log.Println("Produced block: ", block.PrettyPrint())
-
-				blkJson, err := block.ToJson()
-				if err != nil {
-					log.Println("Serialization error :", err)
-					continue
-				}
-
-				if err := bp.topic.Publish(ctx, blkJson); err != nil {
+				if err := bp.p2pPublisher.PublishBlock(ctx, block); err != nil {
 					log.Println("Publish error:", err)
 				}
 

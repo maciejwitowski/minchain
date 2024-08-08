@@ -2,11 +2,10 @@ package services
 
 import (
 	"context"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"log"
 	"minchain/core"
-	"minchain/core/types"
 	"minchain/database"
+	"minchain/p2p"
 	"minchain/validator"
 )
 
@@ -15,18 +14,20 @@ type ProcessBlocks struct {
 	database       database.Database
 	chainstore     core.Chainstore
 	mempool        core.Mempool
+	consumer       p2p.Consumer
 }
 
-func NewProcessBlocksService(blockValidator validator.Validator, database database.Database, chainstore core.Chainstore, mempool core.Mempool) *ProcessBlocks {
+func NewProcessBlocksService(blockValidator validator.Validator, database database.Database, chainstore core.Chainstore, mempool core.Mempool, consumer p2p.Consumer) *ProcessBlocks {
 	return &ProcessBlocks{
 		blockValidator: blockValidator,
 		database:       database,
 		chainstore:     chainstore,
 		mempool:        mempool,
+		consumer:       consumer,
 	}
 }
 
-func (p *ProcessBlocks) Start(ctx context.Context, sub *pubsub.Subscription) {
+func (p *ProcessBlocks) Start(ctx context.Context) {
 	go func() {
 		for {
 			select {
@@ -34,18 +35,10 @@ func (p *ProcessBlocks) Start(ctx context.Context, sub *pubsub.Subscription) {
 				log.Println("context cancelled, stopping processing blocks")
 				return
 			default:
-				msg, err := sub.Next(ctx)
+				block, err := p.consumer.ConsumeBlock(ctx)
 				if err != nil {
-					log.Println("Subscription error:", err)
 					return
 				}
-				block, err := types.BlockFromJson(msg.Data)
-				if err != nil {
-					log.Println("Error deserializing block:", err)
-					return
-				}
-
-				log.Println("Received block: ", block.BlockHash())
 				err = p.blockValidator.Validate(block)
 				if err != nil {
 					log.Println("validator error ", err)

@@ -13,13 +13,13 @@ type Tx struct {
 	Signature []byte `json:"sig"`
 }
 
-// ToJSON serializes the Transaction to JSON
-func (t *Tx) ToJSON() ([]byte, error) {
+// ToJson serializes the Transaction to JSON
+func (t *Tx) ToJson() ([]byte, error) {
 	return json.Marshal(t)
 }
 
-// FromJSON deserializes JSON data into a Transaction
-func FromJSON(data []byte) (*Tx, error) {
+// TransactionFromJSON deserializes JSON data into a Transaction
+func TransactionFromJSON(data []byte) (*Tx, error) {
 	var t Tx
 	err := json.Unmarshal(data, &t)
 	if err != nil {
@@ -37,7 +37,7 @@ func (t *Tx) PrettyPrint() string {
 }
 
 func (t *Tx) HashBytes() ([]byte, error) {
-	serialized, err := t.ToJSON()
+	serialized, err := t.ToJson()
 	if err != nil {
 		return []byte{}, err
 	}

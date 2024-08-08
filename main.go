@@ -4,24 +4,23 @@ import (
 	"context"
 	"log"
 	"minchain/core"
+	"minchain/database"
 	"minchain/genesis"
 	"minchain/lib"
 	"minchain/monitor"
 	"minchain/p2p"
 	"minchain/services"
+	"minchain/validator"
 	"time"
 )
 
 var Dependencies = InitApplicationDependencies(lib.InitConfig())
 
 func main() {
-	//logging.SetAllLoggers(logging.LevelDebug)
-
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	// TODO Better dependency injection
 	initializeGenesisState(Dependencies)
 
 	node, err := p2p.InitNode(ctx, Dependencies.Config)
@@ -37,7 +36,7 @@ func main() {
 	go monitor.Monitor(ctx, Dependencies.Mempool, 1*time.Second)
 
 	if Dependencies.Config.IsBlockProducer {
-		go core.NewBlockProducer(Dependencies.Mempool, node.BlocksTopic, Dependencies.Chainstore, Dependencies.Config).BuildAndPublishBlock(ctx)
+		go core.NewBlockProducer(Dependencies.Mempool, node.Publisher, Dependencies.Chainstore, Dependencies.Config).BuildAndPublishBlock(ctx)
 	}
 
 	select {}
@@ -52,34 +51,47 @@ func initializeGenesisState(app *App) {
 }
 
 func launchTransactionsProcessing(ctx context.Context, node *p2p.Node) {
-	txSubscription, err := node.SubscribeToTransactions()
-	if err != nil {
-		log.Println("Error subscribing to transactions:", err)
-		return
-	}
-
 	userInput := lib.UserInput(ctx)
 	processTransactions := services.NewProcessTransactionsService(
 		Dependencies.Mempool,
 		Dependencies.Wallet,
+		node.Publisher,
+		node.Consumer,
 		userInput,
-		node.TxTopic,
 	)
-	processTransactions.Start(ctx, txSubscription)
+	processTransactions.Start(ctx)
 }
 
 func launchBlocksProcessing(ctx context.Context, node *p2p.Node) {
-	blockSubscription, err := node.SubscribeToBlocks()
-	if err != nil {
-		log.Println("Error subscribing to blocks:", err)
-		return
-	}
-
 	blocksProcessing := services.NewProcessBlocksService(
 		Dependencies.BlockValidator,
 		Dependencies.Database,
 		Dependencies.Chainstore,
 		Dependencies.Mempool,
+		node.Consumer,
 	)
-	blocksProcessing.Start(ctx, blockSubscription)
+	blocksProcessing.Start(ctx)
+}
+
+// App type keeps applevel dependencies (singletons)
+type App struct {
+	Mempool        core.Mempool
+	Database       database.Database
+	Chainstore     core.Chainstore
+	BlockValidator validator.Validator
+	Wallet         *core.Wallet
+	Config         lib.Config
+}
+
+func InitApplicationDependencies(config lib.Config) *App {
+	db := database.NewMemoryDatabase()
+
+	return &App{
+		Mempool:        core.InitMempool(),
+		Database:       db,
+		Chainstore:     core.NewChainstore(db),
+		BlockValidator: validator.NewBlockValidator(db),
+		Wallet:         core.NewWallet(config.PrivateKey),
+		Config:         config,
+	}
 }

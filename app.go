@@ -1,8 +1,9 @@
-package lib
+package main
 
 import (
 	"minchain/core"
 	"minchain/database"
+	"minchain/lib"
 	"minchain/validator"
 )
 
@@ -13,10 +14,10 @@ type App struct {
 	Chainstore     core.Chainstore
 	BlockValidator validator.Validator
 	Wallet         *core.Wallet
-	Config         Config
+	Config         lib.Config
 }
 
-func InitApplicationDependencies(config Config) *App {
+func InitApplicationDependencies(config lib.Config) *App {
 	db := database.NewMemoryDatabase()
 
 	return &App{

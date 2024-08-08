@@ -8,12 +8,13 @@ import (
 	"minchain/core/types"
 	"minchain/genesis"
 	"minchain/lib"
+	"minchain/monitor"
 	"minchain/p2p"
 	"minchain/services"
 	"time"
 )
 
-var Dependencies = lib.InitApplicationDependencies(lib.InitConfig())
+var Dependencies = InitApplicationDependencies(lib.InitConfig())
 
 func main() {
 	//logging.SetAllLoggers(logging.LevelDebug)
@@ -35,7 +36,7 @@ func main() {
 	launchTransactionsProcessing(ctx, node)
 	launchBlocksProcessing(ctx, node)
 
-	go lib.Monitor(ctx, Dependencies.Mempool, 1*time.Second)
+	go monitor.Monitor(ctx, Dependencies.Mempool, 1*time.Second)
 
 	if Dependencies.Config.IsBlockProducer {
 		go core.NewBlockProducer(Dependencies.Mempool, node.BlocksTopic, Dependencies.Chainstore, Dependencies.Config).BuildAndPublishBlock(ctx)
@@ -44,7 +45,7 @@ func main() {
 	select {}
 }
 
-func initializeGenesisState(app *lib.App) {
+func initializeGenesisState(app *App) {
 	err := genesis.InitializeGenesisState(app.Database, app.Chainstore)
 	if err != nil {
 		log.Fatal(err)

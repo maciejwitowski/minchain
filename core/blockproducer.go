@@ -12,16 +12,16 @@ import (
 // BlockProducer reads mempool and then produces and publishes a block
 type BlockProducer struct {
 	mempool      Mempool
-	chainstore   Chainstore
+	chainhead    Chainhead
 	config       lib.Config
 	p2pPublisher p2p.Publisher
 }
 
-func NewBlockProducer(mempool Mempool, p2pPublisher p2p.Publisher, chainstore Chainstore, config lib.Config) *BlockProducer {
+func NewBlockProducer(mempool Mempool, p2pPublisher p2p.Publisher, chainhead Chainhead, config lib.Config) *BlockProducer {
 	return &BlockProducer{
 		mempool:      mempool,
 		p2pPublisher: p2pPublisher,
-		chainstore:   chainstore,
+		chainhead:    chainhead,
 		config:       config,
 	}
 }
@@ -71,7 +71,7 @@ func (bp *BlockProducer) buildBlock(txs []types.Tx) (*types.Block, error) {
 		return nil, err
 	}
 
-	parent := bp.chainstore.GetHead()
+	parent := bp.chainhead.GetHead()
 	block := types.Block{
 		Header: types.BlockHeader{
 			ParentHash:      parent.BlockHash(),

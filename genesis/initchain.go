@@ -11,7 +11,7 @@ import (
 	"minchain/database"
 )
 
-func InitializeGenesisState(db database.Database, store core.Chainstore) error {
+func InitializeGenesisState(db database.Database, store core.Chainhead) error {
 	_, err := db.GetBlockByHash(core.GenesisBlockHash)
 	if err != nil {
 		if errors.Is(err, badger.ErrKeyNotFound) {

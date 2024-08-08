@@ -15,7 +15,7 @@ import (
 type App struct {
 	mempool           core.Mempool
 	database          database.Database
-	chainstore        core.Chainstore
+	chainhead         core.Chainhead
 	blockValidator    validator.Validator
 	wallet            *core.Wallet
 	config            lib.Config
@@ -27,7 +27,7 @@ type App struct {
 func NewApp(
 	mempool core.Mempool,
 	database database.Database,
-	chainstore core.Chainstore,
+	chainhead core.Chainhead,
 	blockValidator validator.Validator,
 	wallet *core.Wallet,
 	config lib.Config,
@@ -38,7 +38,7 @@ func NewApp(
 	return &App{
 		mempool:           mempool,
 		database:          database,
-		chainstore:        chainstore,
+		chainhead:         chainhead,
 		blockValidator:    blockValidator,
 		wallet:            wallet,
 		config:            config,
@@ -54,12 +54,12 @@ func (app *App) Start(ctx context.Context) {
 	app.launchBlocksProcessing(ctx)
 
 	if app.config.IsBlockProducer {
-		go core.NewBlockProducer(app.mempool, app.publisher, app.chainstore, app.config).BuildAndPublishBlock(ctx)
+		go core.NewBlockProducer(app.mempool, app.publisher, app.chainhead, app.config).BuildAndPublishBlock(ctx)
 	}
 }
 
 func (app *App) initializeGenesisState() {
-	err := genesis.InitializeGenesisState(app.database, app.chainstore)
+	err := genesis.InitializeGenesisState(app.database, app.chainhead)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func (app *App) launchBlocksProcessing(ctx context.Context) {
 	blocksProcessing := services.NewProcessBlocksService(
 		app.blockValidator,
 		app.database,
-		app.chainstore,
+		app.chainhead,
 		app.mempool,
 		app.consumer,
 	)

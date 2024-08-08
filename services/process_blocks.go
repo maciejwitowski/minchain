@@ -12,16 +12,16 @@ import (
 type ProcessBlocks struct {
 	blockValidator validator.Validator
 	database       database.Database
-	chainstore     core.Chainstore
+	chainhead      core.Chainhead
 	mempool        core.Mempool
 	consumer       p2p.Consumer
 }
 
-func NewProcessBlocksService(blockValidator validator.Validator, database database.Database, chainstore core.Chainstore, mempool core.Mempool, consumer p2p.Consumer) *ProcessBlocks {
+func NewProcessBlocksService(blockValidator validator.Validator, database database.Database, chainhead core.Chainhead, mempool core.Mempool, consumer p2p.Consumer) *ProcessBlocks {
 	return &ProcessBlocks{
 		blockValidator: blockValidator,
 		database:       database,
-		chainstore:     chainstore,
+		chainhead:      chainhead,
 		mempool:        mempool,
 		consumer:       consumer,
 	}
@@ -51,7 +51,7 @@ func (p *ProcessBlocks) Start(ctx context.Context) {
 					log.Println("Validator.PutBlock ", err)
 				}
 
-				p.chainstore.SetHead(block)
+				p.chainhead.SetHead(block)
 				p.mempool.PruneTransactions(block.Transactions)
 			}
 		}

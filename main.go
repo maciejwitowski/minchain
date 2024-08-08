@@ -45,7 +45,7 @@ func main() {
 	application := app.NewApp(
 		mempool,
 		db,
-		core.NewChainstore(db),
+		core.NewChainhead(db),
 		validator.NewBlockValidator(db),
 		core.NewWallet(config.PrivateKey),
 		config,

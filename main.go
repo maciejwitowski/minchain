@@ -51,13 +51,12 @@ func initializeGenesisState(app *App) {
 }
 
 func launchTransactionsProcessing(ctx context.Context, node *p2p.Node) {
-	userInput := lib.UserInput(ctx)
 	processTransactions := services.NewProcessTransactionsService(
 		Dependencies.Mempool,
 		Dependencies.Wallet,
 		node.Publisher,
 		node.Consumer,
-		userInput,
+		lib.NewUserInput(),
 	)
 	processTransactions.Start(ctx)
 }

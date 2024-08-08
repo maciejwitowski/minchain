@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"minchain/core"
+	"minchain/lib"
 	"minchain/p2p"
 )
 
@@ -12,16 +13,16 @@ type ProcessTransactions struct {
 	wallet    *core.Wallet
 	publisher p2p.Publisher
 	consumer  p2p.Consumer
-	userInput <-chan string
+	input     lib.TransactionsInput
 }
 
-func NewProcessTransactionsService(mempool core.Mempool, wallet *core.Wallet, publisher p2p.Publisher, consumer p2p.Consumer, userInput <-chan string) *ProcessTransactions {
+func NewProcessTransactionsService(mempool core.Mempool, wallet *core.Wallet, publisher p2p.Publisher, consumer p2p.Consumer, input lib.TransactionsInput) *ProcessTransactions {
 	return &ProcessTransactions{
 		wallet:    wallet,
 		mempool:   mempool,
 		publisher: publisher,
 		consumer:  consumer,
-		userInput: userInput,
+		input:     input,
 	}
 }
 
@@ -31,7 +32,7 @@ func (p *ProcessTransactions) Start(ctx context.Context) {
 }
 
 func (p *ProcessTransactions) publishInputToMempool(ctx context.Context) {
-	for message := range p.userInput {
+	for message := range p.input.InputChannel(ctx) {
 		log.Println("user input: ", message)
 		tx, err := p.wallet.SignedTransaction(message)
 		if err != nil {

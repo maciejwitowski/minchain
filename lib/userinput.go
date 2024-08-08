@@ -9,9 +9,22 @@ import (
 	"strings"
 )
 
-func UserInput(ctx context.Context) <-chan string {
+type TransactionsInput interface {
+	InputChannel(ctx context.Context) <-chan string
+}
+
+type UserInput struct {
+	reader *bufio.Reader
+}
+
+func NewUserInput() TransactionsInput {
+	return &UserInput{
+		reader: bufio.NewReader(os.Stdin),
+	}
+}
+
+func (ui *UserInput) InputChannel(ctx context.Context) <-chan string {
 	messages := make(chan string)
-	reader := bufio.NewReader(os.Stdin)
 
 	go func() {
 		defer close(messages)
@@ -22,7 +35,7 @@ func UserInput(ctx context.Context) <-chan string {
 				log.Println("context cancelled")
 			default:
 				fmt.Print("> ")
-				message, err := reader.ReadString('\n')
+				message, err := ui.reader.ReadString('\n')
 				if err != nil {
 					fmt.Println("Error reading the message:", err)
 				}

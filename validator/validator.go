@@ -1,7 +1,6 @@
 package validator
 
 import (
-	"minchain/core"
 	"minchain/core/types"
 	"minchain/database"
 )
@@ -32,7 +31,7 @@ func (v *BlockValidator) Validate(block *types.Block) error {
 		return ErrorUnknownParent
 	}
 
-	hash, err := core.Hash(block.Transactions)
+	hash, err := types.CombinedHash(block.Transactions)
 	if err != nil {
 		return err
 	}

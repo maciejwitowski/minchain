@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
@@ -45,9 +46,23 @@ func (t *Tx) HashBytes() ([]byte, error) {
 }
 
 func (t *Tx) Hash() (common.Hash, error) {
-	bytes, err := t.HashBytes()
+	txBytes, err := t.HashBytes()
 	if err != nil {
 		return common.Hash{}, err
 	}
-	return common.BytesToHash(bytes), nil
+	return common.BytesToHash(txBytes), nil
+}
+
+func CombinedHash(txs []Tx) (common.Hash, error) {
+	buffer := bytes.Buffer{}
+	for _, tx := range txs {
+		hashBytes, err := tx.HashBytes()
+		if err != nil {
+			return common.Hash{}, err
+		}
+		buffer.Write(hashBytes)
+	}
+
+	combinedHash := crypto.Keccak256(buffer.Bytes())
+	return common.BytesToHash(combinedHash), nil
 }

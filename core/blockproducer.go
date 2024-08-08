@@ -1,10 +1,7 @@
 package core
 
 import (
-	"bytes"
 	"context"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"log"
 	"minchain/core/types"
 	"minchain/lib"
@@ -66,7 +63,7 @@ type BlockBuilder interface {
 }
 
 func (bp *BlockProducer) buildBlock(txs []types.Tx) (*types.Block, error) {
-	txHash, err := Hash(txs)
+	txHash, err := types.CombinedHash(txs)
 	if err != nil {
 		log.Println("Block production failed. Skipping") // TODO error handling
 		return nil, err
@@ -81,18 +78,4 @@ func (bp *BlockProducer) buildBlock(txs []types.Tx) (*types.Block, error) {
 		Transactions: txs,
 	}
 	return &block, nil
-}
-
-func Hash(txs []types.Tx) (common.Hash, error) {
-	buffer := bytes.Buffer{}
-	for _, tx := range txs {
-		hashBytes, err := tx.HashBytes()
-		if err != nil {
-			return common.Hash{}, err
-		}
-		buffer.Write(hashBytes)
-	}
-
-	combinedHash := crypto.Keccak256(buffer.Bytes())
-	return common.BytesToHash(combinedHash), nil
 }

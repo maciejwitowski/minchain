@@ -1,6 +1,7 @@
 package database
 
 import (
+	"errors"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/ethereum/go-ethereum/common"
 	"minchain/core/types"
@@ -37,7 +38,11 @@ func (db *DiskDatabase) GetHead() (common.Hash, error) {
 	err := db.inner.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(chainHeadKey)
 		if err != nil {
-			return ErrorHeadBlockNotSet
+			if errors.Is(err, badger.ErrKeyNotFound) {
+				return ErrorHeadBlockNotSet
+			} else {
+				return err
+			}
 		}
 		err = item.Value(func(val []byte) error {
 			bytes = val
@@ -74,7 +79,11 @@ func (db *DiskDatabase) GetBlockByHash(hash common.Hash) (*types.Block, error) {
 	err := db.inner.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(hash.Bytes())
 		if err != nil {
-			return err
+			if errors.Is(err, badger.ErrKeyNotFound) {
+				return ErrorBlockNotFound
+			} else {
+				return err
+			}
 		}
 		err = item.Value(func(val []byte) error {
 			bytes = val

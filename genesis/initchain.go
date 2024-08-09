@@ -2,47 +2,35 @@ package genesis
 
 import (
 	"errors"
-	"fmt"
-	"github.com/dgraph-io/badger/v4"
-	"github.com/ethereum/go-ethereum/common"
 	"log"
 	"minchain/core"
-	"minchain/core/types"
 	"minchain/database"
 )
 
-func InitializeGenesisState(db database.Database, store core.Chainhead) error {
-	_, err := db.GetBlockByHash(core.GenesisBlockHash)
-	if err != nil {
-		if errors.Is(err, badger.ErrKeyNotFound) {
-			log.Println("Genesis already initialised. Skipping.")
-			return nil
-		} else {
-			return err
-		}
+func InitializeGenesisState(db database.Database) error {
+	blockchainHashes, err := core.PrintBlockHashes(db)
+	log.Println("InitializeGenesisState. Current blockchain:", blockchainHashes)
+
+	head, err := db.GetHead()
+	if err == nil {
+		log.Println("Head exists, no need to initialise genesis. ", head.Hex())
+		return nil
+	}
+
+	if err != nil && !errors.Is(err, database.ErrorHeadBlockNotSet) {
+		return err
 	}
 
 	log.Println("Initializing genesis")
 
-	genesisBlock := types.Block{
-		Header: types.BlockHeader{
-			ParentHash:      common.Hash{},
-			TransactionHash: common.Hash{},
-		},
-		Transactions: make([]types.Tx, 0),
-	}
-
-	blockHash := genesisBlock.BlockHash()
-	if blockHash != core.GenesisBlockHash {
-		errText := fmt.Sprintf("Incorrect genesis hash %s", blockHash)
-		return errors.New(errText)
-	}
-
-	err = db.PutBlock(&genesisBlock)
+	err = db.PutBlock(&core.GenesisBlock)
 	if err != nil {
 		return err
 	}
-	store.SetHead(&genesisBlock)
+	err = db.SetHead(core.GenesisBlock.BlockHash())
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

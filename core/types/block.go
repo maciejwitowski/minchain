@@ -22,7 +22,7 @@ type BlockHeader struct {
 func (block *Block) BlockHash() common.Hash {
 	headerBytes, err := json.Marshal(block.Header)
 	if err != nil {
-		return [32]byte{}
+		return common.Hash{}
 	}
 
 	return common.BytesToHash(crypto.Keccak256(headerBytes))

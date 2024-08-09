@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"minchain/core/types"
+	"minchain/database"
 	"minchain/lib"
 	"minchain/p2p"
 	"time"
@@ -12,16 +13,16 @@ import (
 // BlockProducer reads mempool and then produces and publishes a block
 type BlockProducer struct {
 	mempool      Mempool
-	chainhead    Chainhead
+	database     database.Database
 	config       lib.Config
 	p2pPublisher p2p.Publisher
 }
 
-func NewBlockProducer(mempool Mempool, p2pPublisher p2p.Publisher, chainhead Chainhead, config lib.Config) *BlockProducer {
+func NewBlockProducer(mempool Mempool, database database.Database, p2pPublisher p2p.Publisher, config lib.Config) *BlockProducer {
 	return &BlockProducer{
 		mempool:      mempool,
+		database:     database,
 		p2pPublisher: p2pPublisher,
-		chainhead:    chainhead,
 		config:       config,
 	}
 }
@@ -36,7 +37,6 @@ func (bp *BlockProducer) BuildAndPublishBlock(ctx context.Context) {
 		case <-blocktimeTicker.C:
 			// TODO more advanced selection logic
 			transactions := bp.mempool.ListPendingTransactions()
-			log.Println("Before publishing a block. Transactions cound:", len(transactions))
 			if len(transactions) == 0 {
 				continue
 			}
@@ -71,10 +71,14 @@ func (bp *BlockProducer) buildBlock(txs []types.Tx) (*types.Block, error) {
 		return nil, err
 	}
 
-	parent := bp.chainhead.GetHead()
+	parent, err := bp.database.GetHead()
+	if err != nil {
+		log.Fatal("No parent in database due to incorrect node initialization. Should never happen")
+	}
+
 	block := types.Block{
 		Header: types.BlockHeader{
-			ParentHash:      parent.BlockHash(),
+			ParentHash:      parent,
 			TransactionHash: txHash,
 		},
 		Transactions: txs,

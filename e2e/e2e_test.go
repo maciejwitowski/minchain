@@ -18,7 +18,6 @@ import (
 func TestE2E(t *testing.T) {
 	var ctx = context.Background()
 	var db = database.NewMemoryDatabase()
-	var chainhead = core.NewChainhead(db)
 	var mempool = core.NewMempool()
 	var pk, _ = crypto.HexToECDSA("ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
 
@@ -43,7 +42,6 @@ func TestE2E(t *testing.T) {
 	var testApp = app.NewApp(
 		mempool,
 		db,
-		chainhead,
 		validator.NewBlockValidator(db),
 		core.NewWallet(testConfig.PrivateKey),
 		testConfig,
@@ -77,8 +75,9 @@ func TestE2E(t *testing.T) {
 	waitForPropagation()
 
 	blockStoredInDb, _ := db.GetBlockByHash(publishedBlock.BlockHash())
+	headBlock, _ := db.GetHead()
 	require.Equal(t, publishedBlock.BlockHash(), blockStoredInDb.BlockHash())
-	require.Equal(t, publishedBlock.BlockHash(), chainhead.GetHead().BlockHash())
+	require.Equal(t, publishedBlock.BlockHash(), headBlock)
 	require.Equal(t, 0, len(mempool.ListPendingTransactions()))
 }
 

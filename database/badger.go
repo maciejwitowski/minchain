@@ -7,6 +7,7 @@ import (
 )
 
 var badgerFilePath = "/tmp/badger"
+var chainHeadKey = []byte("chain_head")
 
 type DiskDatabase struct {
 	inner *badger.DB
@@ -18,6 +19,38 @@ func NewDiskDatabase() (Database, error) {
 		return nil, err
 	}
 	return &DiskDatabase{inner: open}, nil
+}
+
+func (db *DiskDatabase) SetHead(blockHash common.Hash) error {
+	return db.inner.Update(func(txn *badger.Txn) error {
+		err := txn.Set(chainHeadKey, blockHash.Bytes())
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+func (db *DiskDatabase) GetHead() (common.Hash, error) {
+	var bytes []byte
+
+	err := db.inner.View(func(txn *badger.Txn) error {
+		item, err := txn.Get(chainHeadKey)
+		if err != nil {
+			return ErrorHeadBlockNotSet
+		}
+		err = item.Value(func(val []byte) error {
+			bytes = val
+			return nil
+		})
+		return err
+	})
+
+	if err != nil {
+		return common.Hash{}, err
+	}
+
+	return common.BytesToHash(bytes), nil
 }
 
 func (db *DiskDatabase) PutBlock(block *types.Block) error {

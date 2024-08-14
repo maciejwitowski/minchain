@@ -13,7 +13,7 @@ RUN go mod download
 EXPOSE 9555
 
 # Copy the source from the current directory to the Working Directory inside the container
-COPY *.go ./
+COPY . .
 
 # Build the application
 RUN go build -o main .

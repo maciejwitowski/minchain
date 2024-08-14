@@ -1,0 +1,27 @@
+version: '3'
+services:
+  producer:
+    build: .
+    ports:
+      - "8080:8080"
+      - "8000:8000"
+    environment:
+      - P2P_PORT=8000
+      - IS_BLOCK_PRODUCER=true
+      - INPUTS=api
+    volumes:
+      - producer_badger_data:/tmp/badger
+  validator:
+    build: .
+    ports:
+      - "8001:8000"
+    environment:
+      - P2P_PORT=8001
+      - IS_BLOCK_PRODUCER=false
+      - INPUTS=api
+    volumes:
+      - validator_badger_data:/tmp/badger
+
+volumes:
+  producer_badger_data:
+  validator_badger_data:

@@ -37,13 +37,8 @@ func InitConfig() Config {
 	}
 
 	// Expects comma-separated inputs: cli, api
-	var inputs []string
 	inputsStr := os.Getenv("INPUTS")
-	if inputsStr == "" {
-		inputs = append(inputs, INPUT_STDIN)
-	} else {
-		inputs = strings.Split(inputsStr, ",")
-	}
+	var inputs = strings.Split(inputsStr, ",")
 
 	privateKey, err := ethcrypto.LoadECDSA(".pk")
 	if err != nil {

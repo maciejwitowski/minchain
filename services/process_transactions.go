@@ -13,34 +13,34 @@ type ProcessTransactions struct {
 	wallet    *core.Wallet
 	publisher p2p.Publisher
 	consumer  p2p.Consumer
-	input     lib.TransactionsInput
+	inputs    []lib.TransactionsInput
 }
 
-func NewProcessTransactionsService(mempool core.Mempool, wallet *core.Wallet, publisher p2p.Publisher, consumer p2p.Consumer, input lib.TransactionsInput) *ProcessTransactions {
+func NewProcessTransactionsService(mempool core.Mempool, wallet *core.Wallet, publisher p2p.Publisher, consumer p2p.Consumer, inputs []lib.TransactionsInput) *ProcessTransactions {
 	return &ProcessTransactions{
 		wallet:    wallet,
 		mempool:   mempool,
 		publisher: publisher,
 		consumer:  consumer,
-		input:     input,
+		inputs:    inputs,
 	}
 }
 
 func (p *ProcessTransactions) Start(ctx context.Context) {
-	go p.publishTransactionsToNetwork(ctx)
+	for _, input := range p.inputs {
+		go p.publishTransactionsToNetwork(ctx, input)
+	}
 	go p.consumeTransactionsFromNetwork(ctx)
 }
 
-func (p *ProcessTransactions) publishTransactionsToNetwork(ctx context.Context) {
-	for message := range p.input.InputChannel(ctx) {
-		log.Println("user input: ", message)
+func (p *ProcessTransactions) publishTransactionsToNetwork(ctx context.Context, input lib.TransactionsInput) {
+	for message := range input.InputChannel(ctx) {
 		tx, err := p.wallet.SignedTransaction(message)
 		if err != nil {
 			log.Println("Error building transaction:", err)
 			return
 		}
 
-		log.Println("Publishing transaction:", tx.PrettyPrint())
 		if err := p.publisher.PublishTransaction(ctx, tx); err != nil {
 			log.Println("Publish error:", err)
 		}

@@ -42,6 +42,29 @@ func main() {
 	mempool := core.NewMempool()
 	go monitor.Monitor(ctx, mempool, 1*time.Second)
 
+	var inputs []lib.TransactionsInput
+	for _, i := range config.Inputs {
+		switch i {
+		case lib.INPUT_STDIN:
+			inputs = append(inputs, lib.NewUserInput())
+		case lib.INPUT_API:
+			httpApi := lib.NewHttpApi("0.0.0.0:8080")
+			// TODO move into app.start
+			log.Println("before start")
+
+			go func() {
+				err := httpApi.Start()
+				if err != nil {
+					log.Fatal("error starting http: ", err)
+				}
+			}()
+
+			inputs = append(inputs, httpApi)
+		default:
+			log.Fatalf("Unknown input type: %s", i)
+		}
+	}
+
 	application := app.NewApp(
 		mempool,
 		db,
@@ -50,7 +73,7 @@ func main() {
 		config,
 		node.Publisher,
 		node.Consumer,
-		lib.NewUserInput(),
+		inputs,
 	)
 	application.Start(ctx)
 

@@ -13,14 +13,14 @@ import (
 )
 
 type App struct {
-	mempool           core.Mempool
-	database          database.Database
-	blockValidator    validator.Validator
-	wallet            *core.Wallet
-	config            lib.Config
-	publisher         p2p.Publisher
-	consumer          p2p.Consumer
-	transactionsInput lib.TransactionsInput
+	mempool            core.Mempool
+	database           database.Database
+	blockValidator     validator.Validator
+	wallet             *core.Wallet
+	config             lib.Config
+	publisher          p2p.Publisher
+	consumer           p2p.Consumer
+	transactionsInputs []lib.TransactionsInput
 }
 
 func NewApp(
@@ -31,21 +31,22 @@ func NewApp(
 	config lib.Config,
 	publisher p2p.Publisher,
 	consumer p2p.Consumer,
-	transactionsInput lib.TransactionsInput,
+	transactionsInputs []lib.TransactionsInput,
 ) *App {
 	return &App{
-		mempool:           mempool,
-		database:          database,
-		blockValidator:    blockValidator,
-		wallet:            wallet,
-		config:            config,
-		publisher:         publisher,
-		consumer:          consumer,
-		transactionsInput: transactionsInput,
+		mempool:            mempool,
+		database:           database,
+		blockValidator:     blockValidator,
+		wallet:             wallet,
+		config:             config,
+		publisher:          publisher,
+		consumer:           consumer,
+		transactionsInputs: transactionsInputs,
 	}
 }
 
 func (app *App) Start(ctx context.Context) {
+	log.Println("In App#start")
 	app.initializeGenesisState()
 	app.launchTransactionsProcessing(ctx)
 	app.launchBlocksProcessing(ctx)
@@ -68,7 +69,7 @@ func (app *App) launchTransactionsProcessing(ctx context.Context) {
 		app.wallet,
 		app.publisher,
 		app.consumer,
-		app.transactionsInput,
+		app.transactionsInputs,
 	)
 	processTransactions.Start(ctx)
 }

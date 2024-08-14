@@ -2,9 +2,11 @@ package lib
 
 import (
 	"crypto/ecdsa"
-	"flag"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"log"
+	"os"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -13,13 +15,35 @@ type Config struct {
 	PrivateKey      *ecdsa.PrivateKey
 	IsBlockProducer bool
 	BlockTime       time.Duration
+	Inputs          []string
 }
 
+const (
+	INPUT_STDIN = "stdin"
+	INPUT_API   = "api"
+)
+
 func InitConfig() Config {
-	port := flag.Int("port", 0, "wait for incoming connections")
-	isBlockProducer := flag.Bool("block-producer", false, "whether this node is a block producer")
-	blocktime := flag.Int("block-time", 5, "blocktime in seconds (default 5)")
-	flag.Parse()
+	portStr := os.Getenv("P2P_PORT")
+	if portStr == "" {
+		log.Fatal("unknown p2p port")
+	}
+	port, _ := strconv.Atoi(portStr)
+
+	isBlockProducerStr := os.Getenv("IS_BLOCK_PRODUCER")
+	isBlockProducer := false
+	if isBlockProducerStr == "true" {
+		isBlockProducer = true
+	}
+
+	// Expects comma-separated inputs: cli, api
+	var inputs []string
+	inputsStr := os.Getenv("INPUTS")
+	if inputsStr == "" {
+		inputs = append(inputs, INPUT_STDIN)
+	} else {
+		inputs = strings.Split(inputsStr, ",")
+	}
 
 	privateKey, err := ethcrypto.LoadECDSA(".pk")
 	if err != nil {
@@ -27,9 +51,10 @@ func InitConfig() Config {
 	}
 
 	return Config{
-		ListeningPort:   *port,
-		IsBlockProducer: *isBlockProducer,
+		ListeningPort:   port,
+		IsBlockProducer: isBlockProducer,
 		PrivateKey:      privateKey,
-		BlockTime:       time.Duration(*blocktime) * time.Second,
+		BlockTime:       5 * time.Second,
+		Inputs:          inputs,
 	}
 }

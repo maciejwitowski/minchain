@@ -47,7 +47,7 @@ func TestE2E(t *testing.T) {
 		testConfig,
 		&publisher,
 		&consumer,
-		&input,
+		[]lib.TransactionsInput{&input},
 	)
 
 	testApp.Start(ctx)

@@ -37,7 +37,8 @@ func (ui *UserInput) InputChannel(ctx context.Context) <-chan string {
 				fmt.Print("> ")
 				message, err := ui.reader.ReadString('\n')
 				if err != nil {
-					fmt.Println("Error reading the message:", err)
+					fmt.Println("Error reading the message from stdin:", err)
+					break
 				}
 				message = strings.TrimSuffix(message, "\n")
 				if message == "" {

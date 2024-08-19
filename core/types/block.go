@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"math/big"
 )
 
 type Block struct {
@@ -16,7 +15,7 @@ type Block struct {
 type BlockHeader struct {
 	ParentHash      common.Hash `json:"parentHash"`
 	TransactionHash common.Hash `json:"transactionHash"`
-	Number          *big.Int    `json:"number"`
+	Height          int64       `json:"height"`
 }
 
 func (block *Block) BlockHash() common.Hash {

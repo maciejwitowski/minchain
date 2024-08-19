@@ -10,6 +10,7 @@ var GenesisBlock = types.Block{
 	Header: types.BlockHeader{
 		ParentHash:      common.Hash{},
 		TransactionHash: common.Hash{},
+		Height:          0,
 	},
 	Transactions: make([]types.Tx, 0),
 }

@@ -78,6 +78,7 @@ func TestE2E(t *testing.T) {
 	headBlock, _ := db.GetHead()
 	require.Equal(t, publishedBlock.BlockHash(), blockStoredInDb.BlockHash())
 	require.Equal(t, publishedBlock.BlockHash(), headBlock)
+	require.Equal(t, publishedBlock.Header.Height, int64(1))
 	require.Equal(t, 0, len(mempool.ListPendingTransactions()))
 }
 

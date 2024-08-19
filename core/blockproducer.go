@@ -76,10 +76,16 @@ func (bp *BlockProducer) buildBlock(txs []types.Tx) (*types.Block, error) {
 		log.Fatal("No parent in database due to incorrect node initialization. Should never happen")
 	}
 
+	parentBlock, err := bp.database.GetBlockByHash(parent)
+	if err != nil {
+		log.Fatal("error getting parentBlock", err)
+	}
+
 	block := types.Block{
 		Header: types.BlockHeader{
 			ParentHash:      parent,
 			TransactionHash: txHash,
+			Height:          parentBlock.Header.Height + 1,
 		},
 		Transactions: txs,
 	}
